@@ -93,6 +93,20 @@ const ICON_ALIASES_BY_ID = {
   'primary-storm': 'lightning-comb'
 };
 
+function keepFocusInDialog(event, dialog) {
+  if (event.key !== 'Tab') return;
+  const focusable = [...dialog.querySelectorAll(
+    'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [href]'
+  )].filter((element) => element.tabIndex >= 0);
+  if (!focusable.length) return;
+  const activeIndex = focusable.indexOf(document.activeElement);
+  const nextIndex = event.shiftKey
+    ? (activeIndex <= 0 ? focusable.length - 1 : activeIndex - 1)
+    : (activeIndex >= focusable.length - 1 ? 0 : activeIndex + 1);
+  event.preventDefault();
+  focusable[nextIndex].focus();
+}
+
 export class HUD {
   constructor(onUpgradeSelected, onRestart, onFullscreen, onRoosterSelected, onReroll, onSettings, onAnalyticsConsent, onTalentPurchased) {
     this.onUpgradeSelected = onUpgradeSelected;
@@ -243,7 +257,7 @@ export class HUD {
         : 'Choose an upgrade.';
     this.setOverlayVisible(true);
     this.overlay.innerHTML = `
-      <div class="panel ${chest ? 'panel--reward' : ''}">
+      <div class="panel upgrade-panel ${chest ? 'panel--reward' : ''}">
         <h2>${title}</h2>
         <p>${subtitle}</p>
         ${context.recentChoice ? `
@@ -1040,41 +1054,68 @@ export class HUD {
     };
     this.setOverlayVisible(true);
     this.overlay.innerHTML = `
-      <div class="panel settings-panel">
-        <h2>Settings</h2>
+      <div class="panel settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" tabindex="-1">
+        <h2 id="settings-title">Settings</h2>
         <p>Adjust visuals and audio independently.</p>
-        <h3>Visuals</h3>
-        <div class="settings-list">
-          ${Object.entries(labels).map(([key, label]) => `
-            <button type="button" data-effect="${key}" aria-pressed="${effectSettings[key]}">
-              <span>${label}</span><strong>${effectSettings[key] ? 'ON' : 'OFF'}</strong>
-            </button>`).join('')}
-          <button type="button" data-settings-fullscreen>
-            <span>Fullscreen</span><strong>TOGGLE</strong>
-          </button>
+        <div class="settings-content">
+          <section class="settings-section">
+            <h3>Visuals</h3>
+            <div class="settings-list">
+              ${Object.entries(labels).map(([key, label]) => `
+                <button type="button" data-effect="${key}" aria-pressed="${effectSettings[key]}">
+                  <span>${label}</span><strong>${effectSettings[key] ? 'ON' : 'OFF'}</strong>
+                </button>`).join('')}
+              <button type="button" data-settings-fullscreen>
+                <span>Fullscreen</span><strong>TOGGLE</strong>
+              </button>
+            </div>
+          </section>
+          <section class="settings-section">
+            <h3>Audio</h3>
+            <div class="settings-list settings-list--audio">
+              ${Object.entries(audioLabels).map(([key, label]) => `
+                <label class="settings-volume">
+                  <span>${label}</span>
+                  <input type="range" min="0" max="1" step="0.05" value="${audioSettings[key]}"
+                    data-audio-volume="${key}" aria-label="${label} volume">
+                  <strong>${Math.round(audioSettings[key] * 100)}%</strong>
+                </label>`).join('')}
+            </div>
+          </section>
+          <section class="settings-section settings-section--privacy">
+            <h3>Privacy</h3>
+            <div class="settings-privacy">
+              <span><strong>Anonymous gameplay analytics</strong><small>Records only run flow and key metrics. No accounts, cookies, or advertising IDs.</small></span>
+              <button type="button" data-analytics-toggle aria-pressed="${Boolean(analyticsSettings?.enabled)}">${analyticsSettings?.enabled ? 'ON' : 'OFF'}</button>
+            </div>
+          </section>
         </div>
-        <h3>Audio</h3>
-        <div class="settings-list settings-list--audio">
-          ${Object.entries(audioLabels).map(([key, label]) => `
-            <label class="settings-volume">
-              <span>${label}</span>
-              <input type="range" min="0" max="1" step="0.05" value="${audioSettings[key]}"
-                data-audio-volume="${key}" aria-label="${label} volume">
-              <strong>${Math.round(audioSettings[key] * 100)}%</strong>
-            </label>`).join('')}
+        <div class="settings-actions">
+          ${onReturnToHub ? `
+            <div class="settings-run-exit">
+              <span><strong>Current run</strong><small>Leave combat and return to the Henhouse.</small></span>
+              <button type="button" data-return-hub>Main menu</button>
+            </div>` : ''}
+          <button class="settings-close" type="button">Continue</button>
         </div>
-        <h3>Privacy</h3>
-        <div class="settings-privacy">
-          <span><strong>Anonymous gameplay analytics</strong><small>Records only run flow and key metrics. No accounts, cookies, or advertising IDs.</small></span>
-          <button type="button" data-analytics-toggle aria-pressed="${Boolean(analyticsSettings?.enabled)}">${analyticsSettings?.enabled ? 'ON' : 'OFF'}</button>
-        </div>
-        ${onReturnToHub ? `
-          <div class="settings-run-exit">
-            <span><strong>Current run</strong><small>Leave combat and return to the Henhouse.</small></span>
-            <button type="button" data-return-hub>Main menu</button>
-          </div>` : ''}
-        <button class="settings-close" type="button">Continue</button>
       </div>`;
+    const panel = this.overlay.querySelector('.settings-panel');
+    let closed = false;
+    const closeSettings = () => {
+      if (closed) return;
+      closed = true;
+      this.overlay.onkeydown = null;
+      onClose?.();
+    };
+    this.overlay.onkeydown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeSettings();
+        return;
+      }
+      keepFocusInDialog(event, panel);
+    };
+    requestAnimationFrame(() => panel.focus({ preventScroll: true }));
     this.overlay.querySelectorAll('[data-effect]').forEach((button) => {
       button.addEventListener('click', () => {
         const next = onEffectToggle?.(button.dataset.effect) ?? effectSettings;
@@ -1097,13 +1138,13 @@ export class HUD {
       button.textContent = state.enabled ? 'ON' : 'OFF';
     });
     this.overlay.querySelector('[data-return-hub]')?.addEventListener('click', () => onReturnToHub?.());
-    this.overlay.querySelector('.settings-close').addEventListener('click', () => onClose?.(), { once: true });
+    this.overlay.querySelector('.settings-close').addEventListener('click', closeSettings, { once: true });
   }
 
   showReturnToHubConfirmation(onConfirm, onCancel) {
     this.setOverlayVisible(true);
     this.overlay.innerHTML = `
-      <div class="panel return-hub-panel" role="dialog" aria-modal="true" aria-labelledby="return-hub-title">
+      <div class="panel return-hub-panel" role="dialog" aria-modal="true" aria-labelledby="return-hub-title" tabindex="-1">
         <small>CURRENT RUN</small>
         <h2 id="return-hub-title">Return to the Henhouse?</h2>
         <p>The current run will end without granting a completion reward.</p>
@@ -1112,7 +1153,21 @@ export class HUD {
           <button type="button" class="is-danger" data-return-confirm>Leave run</button>
         </div>
       </div>`;
-    this.overlay.querySelector('[data-return-cancel]')?.addEventListener('click', () => onCancel?.(), { once: true });
+    const panel = this.overlay.querySelector('.return-hub-panel');
+    const cancel = () => {
+      this.overlay.onkeydown = null;
+      onCancel?.();
+    };
+    this.overlay.onkeydown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        cancel();
+        return;
+      }
+      keepFocusInDialog(event, panel);
+    };
+    requestAnimationFrame(() => panel.focus({ preventScroll: true }));
+    this.overlay.querySelector('[data-return-cancel]')?.addEventListener('click', cancel, { once: true });
     this.overlay.querySelector('[data-return-confirm]')?.addEventListener('click', () => onConfirm?.(), { once: true });
   }
 

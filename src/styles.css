@@ -1219,13 +1219,16 @@ canvas {
   width: min(380px, 100%);
 }
 
+.settings-section h3 {
+  margin: 15px 0 7px;
+}
+
 .settings-list {
   display: grid;
   gap: 7px;
 }
 
 .settings-panel h3 {
-  margin: 15px 0 7px;
   color: #ffd35c;
   font-size: 0.78rem;
   letter-spacing: 0.08em;
@@ -1478,7 +1481,7 @@ canvas {
   }
 }
 
-@media (max-height: 480px) {
+@media (min-width: 521px) and (max-height: 600px) {
   .hud {
     max-width: 620px;
     gap: 4px;
@@ -1776,6 +1779,204 @@ canvas {
   color: #e7eef0;
   font-size: 9px;
   font-weight: 800;
+}
+
+/* The normal settings screen stays unchanged. Short landscape windows use the
+   spare horizontal space so every control and Continue remain on-screen. */
+@media (min-width: 640px) and (max-height: 600px) {
+  .settings-panel {
+    width: min(760px, 100%);
+    padding: 10px 12px;
+  }
+
+  .settings-panel h2 {
+    margin-bottom: 4px;
+    font-size: 20px;
+  }
+
+  .settings-panel > p {
+    margin-bottom: 5px;
+    font-size: 12px;
+  }
+
+  .settings-content {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 12px;
+  }
+
+  .settings-section h3 {
+    margin: 6px 0 4px;
+    font-size: 0.7rem;
+  }
+
+  .settings-list {
+    gap: 4px;
+  }
+
+  .settings-list button {
+    padding: 6px 9px;
+    font-size: 12px;
+  }
+
+  .settings-volume {
+    grid-template-columns: minmax(70px, 1fr) minmax(90px, 1.5fr) 36px;
+    gap: 7px;
+    padding: 5px 9px;
+    font-size: 12px;
+  }
+
+  .settings-section--privacy {
+    grid-column: 1 / -1;
+  }
+
+  .settings-privacy {
+    padding: 6px 9px;
+  }
+
+  .settings-privacy small {
+    font-size: 0.66rem;
+  }
+
+  .settings-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 10px;
+    margin-top: 7px;
+  }
+
+  .settings-run-exit {
+    margin-top: 0;
+    padding: 6px 9px;
+  }
+
+  .settings-run-exit small {
+    font-size: 0.62rem;
+  }
+
+  .settings-close {
+    min-height: 34px;
+    margin-top: 0;
+    padding: 7px 22px;
+  }
+}
+
+@media (min-width: 640px) and (max-height: 480px) {
+  .settings-panel {
+    padding: 8px 10px;
+  }
+
+  .settings-panel h2 {
+    margin-bottom: 2px;
+    font-size: 18px;
+  }
+
+  .settings-panel > p,
+  .settings-privacy small,
+  .settings-run-exit small {
+    display: none;
+  }
+
+  .settings-section h3 {
+    margin: 3px 0;
+  }
+
+  .settings-list button,
+  .settings-volume {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  .settings-run-exit {
+    padding: 4px 8px;
+  }
+
+  .settings-actions {
+    margin-top: 4px;
+  }
+
+  .settings-close {
+    min-height: 30px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+}
+
+/* Keep the normal portrait-phone layout. Only very short phones need denser
+   controls and an internal scroll area to keep Continue available. */
+@media (max-width: 520px) and (max-height: 700px) {
+  .settings-panel {
+    padding: 12px;
+  }
+
+  .settings-panel h2 {
+    margin-bottom: 5px;
+    font-size: 20px;
+  }
+
+  .settings-panel > p {
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+
+  .settings-section h3 {
+    margin: 8px 0 4px;
+    font-size: 0.72rem;
+  }
+
+  .settings-list {
+    gap: 4px;
+  }
+
+  .settings-list button {
+    padding: 7px 10px;
+    font-size: 13px;
+  }
+
+  .settings-volume {
+    grid-template-columns: minmax(78px, 1fr) minmax(90px, 1.45fr) 38px;
+    gap: 7px;
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  .settings-privacy {
+    padding: 6px 9px;
+  }
+
+  .settings-privacy small {
+    font-size: 0.66rem;
+  }
+
+  .settings-run-exit {
+    margin-top: 8px;
+    padding: 6px 9px;
+  }
+
+  .settings-close {
+    min-height: 38px;
+    margin-top: 8px;
+    padding: 7px 12px;
+  }
+}
+
+  .settings-panel {
+    display: flex;
+    box-sizing: border-box;
+    max-height: calc(100dvh - 16px);
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .settings-content {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .settings-actions {
+    flex: 0 0 auto;
+  }
 }
 
 .settings-run-exit {
@@ -7382,5 +7583,217 @@ html.has-ui-overlay .upgrade-confirmation {
 
   .hub-start-button.is-locked span {
     font-size: 10px;
+  }
+}
+
+/* Keep the established desktop composition, but condense only short landscape
+   windows so the selected arena and Start Run stay in the same viewport. */
+@media (min-width: 761px) and (max-height: 600px) {
+  .henhouse-play-grid {
+    grid-template-rows: minmax(0, 1fr) 78px;
+    gap: 6px;
+  }
+
+  .hub-run-card {
+    padding: 6px;
+    gap: 4px;
+  }
+
+  .hub-run-spotlight {
+    min-height: 112px;
+    height: 112px;
+  }
+
+  .hub-run-summary {
+    bottom: 8px;
+    left: 11px;
+    width: min(480px, 60%);
+  }
+
+  .hub-run-summary h2 {
+    margin: 1px 0 2px;
+    font-size: 20px;
+  }
+
+  .hub-run-summary > p {
+    display: none;
+  }
+
+  .hub-run-summary .hub-run-best > span {
+    padding: 4px 6px;
+  }
+
+  .hub-run-best small {
+    font-size: 6px;
+  }
+
+  .hub-run-best strong {
+    font-size: 8px;
+  }
+
+  .hub-mode-heading {
+    min-height: 12px;
+    margin-top: 0;
+  }
+
+  .hub-mode-heading > span {
+    display: none;
+  }
+
+  .hub-challenge-list {
+    min-height: 52px;
+    gap: 4px;
+  }
+
+  .hub-challenge-list .challenge-card {
+    min-height: 52px;
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .hub-challenge-list .challenge-card__copy {
+    padding: 4px 5px 4px 1px;
+  }
+
+  .hub-challenge-list .challenge-card small {
+    display: none;
+  }
+
+  .hub-rooster-hero {
+    min-height: 78px;
+    grid-template-columns: 78px minmax(130px, 1fr) minmax(160px, 0.72fr) minmax(160px, 0.55fr);
+    grid-template-rows: 78px;
+  }
+
+  .hub-rooster-hero__copy {
+    padding: 7px 9px;
+  }
+
+  .hub-rooster-hero__copy h2 {
+    font-size: 16px;
+  }
+
+  .hub-rooster-mastery {
+    margin-top: 4px;
+  }
+
+  .hub-rooster-switches {
+    padding: 0 7px;
+  }
+
+  .hub-rooster-switch {
+    min-height: 27px;
+  }
+
+  .hub-rooster-hero .hub-start-button {
+    margin: 6px;
+  }
+}
+
+/* Upgrade cards keep their key choice information but become compact when the
+   game is short enough that three full descriptions would hide choices. */
+@media (max-height: 600px) {
+  .upgrade-panel {
+    padding: 10px;
+  }
+
+  .upgrade-panel h2 {
+    margin-bottom: 3px;
+    font-size: 20px;
+  }
+
+  .upgrade-panel > p {
+    margin-bottom: 7px;
+    font-size: 12px;
+  }
+
+  .upgrade-panel .upgrade-list {
+    gap: 6px;
+  }
+
+  .upgrade-panel .upgrade-button {
+    min-height: 0;
+    align-items: flex-start;
+    gap: 7px;
+    padding: 7px;
+  }
+
+  .upgrade-panel .upgrade-button__art {
+    flex-basis: 38px;
+    width: 38px;
+    height: 38px;
+  }
+
+  .upgrade-panel .upgrade-button__icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .upgrade-panel .upgrade-button__rarity {
+    width: 38px;
+    height: 38px;
+  }
+
+  .upgrade-panel .upgrade-button__heading {
+    gap: 4px;
+    font-size: 12px;
+  }
+
+  .upgrade-panel .upgrade-button__rank {
+    font-size: 8px;
+  }
+
+  .upgrade-panel .upgrade-button__rank-pips {
+    margin: 2px 0;
+  }
+
+  .upgrade-panel .upgrade-button__rank-pips i {
+    width: 12px;
+    height: 3px;
+  }
+
+  .upgrade-panel .upgrade-button__meta {
+    font-size: 8px;
+  }
+
+  .upgrade-panel .upgrade-button__milestone {
+    margin-top: 2px;
+    font-size: 8px;
+  }
+
+  .upgrade-panel .upgrade-button__changes {
+    gap: 3px;
+    margin-top: 3px;
+  }
+
+  .upgrade-panel .upgrade-button__changes > span {
+    padding: 1px 4px;
+    font-size: 7px;
+  }
+
+  .upgrade-panel .upgrade-button__reward {
+    margin-top: 2px;
+    padding: 1px 5px;
+    font-size: 8px;
+  }
+
+  .upgrade-panel .upgrade-button__description,
+  .upgrade-panel .upgrade-button__synergy,
+  .upgrade-panel .upgrade-button__evolution-hint {
+    display: none;
+  }
+
+  .upgrade-panel .reroll-button {
+    margin-top: 7px;
+    padding: 7px 10px;
+  }
+}
+
+@media (min-width: 640px) and (max-height: 600px) {
+  .upgrade-panel {
+    width: min(760px, 100%);
+  }
+
+  .upgrade-panel .upgrade-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

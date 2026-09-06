@@ -78,6 +78,8 @@ Das Pausieren einer gesamten Szenenuhr kann auch gewünschte UI- oder Endscreen-
 
 ## Phase 2 – Responsive Menüs und eindeutige Fortsetzung
 
+**Status: erledigt am 6. September 2026.** Die bestehenden Standardansichten bleiben erhalten. Nur kurze Landscape-Fenster erhalten kompakte, mehrspaltige Settings- und Upgrade-Layouts; bei sehr kurzen Telefonen scrollt ausschließlich der Einstellungsinhalt innerhalb seines Panels, während „Continue“ fest erreichbar bleibt. Der Hub, Settings, Upgrade-Auswahl und die Rückkehr-Bestätigung werden an den definierten Grenzgrößen automatisch geprüft.
+
 **Betroffene Stellen**
 
 - [styles.css](C:/Users/madde/Documents/ChatGPT/Rooster/RoosterRage/src/styles.css)
