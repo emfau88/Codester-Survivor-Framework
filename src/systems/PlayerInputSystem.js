@@ -24,7 +24,7 @@ export class PlayerInputSystem {
   }
 
   handlePointerDown(pointer) {
-    if (this.scene.isChoosingUpgrade || pointer.x > this.scene.scale.width * 0.58) {
+    if (this.scene.gamePause?.isPaused || this.scene.isChoosingUpgrade || pointer.x > this.scene.scale.width * 0.58) {
       return;
     }
     this.activePointerId = pointer.id;
@@ -42,10 +42,7 @@ export class PlayerInputSystem {
     if (pointer.id !== this.activePointerId) {
       return;
     }
-    this.activePointerId = null;
-    this.touchOrigin = null;
-    this.pointerVector.set(0, 0);
-    this.scene.hud.setJoystick(this.pointerVector);
+    this.clearInput();
   }
 
   updatePointerVector(pointer) {
@@ -62,6 +59,9 @@ export class PlayerInputSystem {
   }
 
   getMovementVector() {
+    if (this.scene.gamePause?.isPaused) {
+      return new Phaser.Math.Vector2(0, 0);
+    }
     const vector = new Phaser.Math.Vector2(0, 0);
     if (this.cursors.left.isDown || this.keys.A.isDown) vector.x -= 1;
     if (this.cursors.right.isDown || this.keys.D.isDown) vector.x += 1;
@@ -71,6 +71,14 @@ export class PlayerInputSystem {
       vector.copy(this.pointerVector);
     }
     return this.scene.bot.enabled ? this.getBotMovementVector() : vector;
+  }
+
+  clearInput() {
+    this.activePointerId = null;
+    this.touchOrigin = null;
+    this.pointerVector.set(0, 0);
+    [...Object.values(this.cursors), ...Object.values(this.keys)].forEach((key) => key?.reset?.());
+    this.scene.hud?.setJoystick(this.pointerVector);
   }
 
   getBotMovementVector() {

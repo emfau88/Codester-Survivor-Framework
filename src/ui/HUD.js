@@ -1116,6 +1116,18 @@ export class HUD {
     this.overlay.querySelector('[data-return-confirm]')?.addEventListener('click', () => onConfirm?.(), { once: true });
   }
 
+  showFocusPause(onResume) {
+    this.setOverlayVisible(true);
+    this.overlay.innerHTML = `
+      <div class="panel focus-pause-panel" role="dialog" aria-modal="true" aria-labelledby="focus-pause-title">
+        <small>RUN PAUSED</small>
+        <h2 id="focus-pause-title">Welcome back</h2>
+        <p>Combat stopped while the game was out of focus.</p>
+        <button type="button" data-focus-resume>Continue</button>
+      </div>`;
+    this.overlay.querySelector('[data-focus-resume]')?.addEventListener('click', () => onResume?.(), { once: true });
+  }
+
   hideOverlay() {
     this.setOverlayVisible(false);
     this.overlay.innerHTML = '';

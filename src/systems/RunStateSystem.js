@@ -2,6 +2,10 @@ import { getPlayerProfile } from '../data/playerProfiles.js';
 
 const MAX_REGULAR_CHOICES = 11;
 
+function wallClockNow() {
+  return globalThis.performance?.now?.() ?? Date.now();
+}
+
 export class RunStateSystem {
   constructor(scene) {
     this.scene = scene;
@@ -20,7 +24,7 @@ export class RunStateSystem {
 
   startRoosterSelection(definitions) {
     this.choosingRooster = true;
-    this.scene.physics.pause();
+    this.scene.gamePause.request('hub', { freezeTime: false, freezeTweens: false });
     this.scene.productAnalytics.viewHub();
     const renderHub = () => this.scene.hud.showRoosterSelection(
       definitions,
@@ -53,7 +57,7 @@ export class RunStateSystem {
     this.scene.audio.stopAmbience(650);
     this.scene.audio.playMusic('run-theme', { fadeMs: 750 });
     this.scene.hud.hideOverlay();
-    this.scene.physics.resume();
+    this.scene.gamePause.release('hub');
     this.scene.waveSystem.start();
     this.scene.productAnalytics.startRun({
       roosterId: id,
@@ -103,14 +107,14 @@ export class RunStateSystem {
       this.pendingUpgradeChoices = null;
       scene.hud.hideOverlay();
       this.lastUpgradeReceipt = null;
-      scene.physics.resume();
+      scene.gamePause.release('upgrade');
       return;
     }
 
     this.choosingUpgrade = true;
-    this.upgradeStartedAt = scene.time.now;
-    scene.bot.upgradeReadyAt = scene.time.now + 260;
-    scene.physics.pause();
+    this.upgradeStartedAt = wallClockNow();
+    scene.bot.upgradeReadyAt = this.upgradeStartedAt + 260;
+    scene.gamePause.request('upgrade');
     scene.telemetry.addUpgradeOffer(
       scene.time.now,
       scene.waveSystem.currentWave,
@@ -161,7 +165,7 @@ export class RunStateSystem {
     }
     const { scene } = this;
     const selection = this.currentSelection;
-    const pauseMs = this.upgradeStartedAt ? scene.time.now - this.upgradeStartedAt : 0;
+    const pauseMs = this.upgradeStartedAt ? wallClockNow() - this.upgradeStartedAt : 0;
     scene.player.applyUpgrade(upgrade, scene);
     scene.playUpgradeFeedback(upgrade);
     scene.hud.showUpgradeConfirmation(upgrade);
@@ -199,8 +203,8 @@ export class RunStateSystem {
     return true;
   }
 
-  maybeChooseBotUpgrade(time) {
-    if (!this.scene.bot.enabled || time < this.scene.bot.upgradeReadyAt || !this.pendingUpgradeChoices) {
+  maybeChooseBotUpgrade() {
+    if (!this.scene.bot.enabled || wallClockNow() < this.scene.bot.upgradeReadyAt || !this.pendingUpgradeChoices) {
       return;
     }
     this.chooseUpgrade(this.pickBotUpgrade(this.pendingUpgradeChoices));
@@ -245,7 +249,7 @@ export class RunStateSystem {
   abandonToHub() {
     if (this.gameEnded || this.choosingRooster) return false;
     this.gameEnded = true;
-    this.scene.physics.pause();
+    this.scene.gamePause.request('ended', { freezeTime: false, freezeTweens: false });
     this.scene.telemetry.finish(this.scene.time.now, 'abandoned');
     this.scene.productAnalytics.finishRun(this.getRunReport());
     this.scene.scene.restart({});
@@ -257,7 +261,7 @@ export class RunStateSystem {
       return;
     }
     this.gameEnded = true;
-    this.scene.physics.pause();
+    this.scene.gamePause.request('ended', { freezeTime: false, freezeTweens: false });
     this.scene.audio.stopAmbience(250);
     this.scene.audio.stopMusic(outcome === 'victory' ? 700 : 450);
     if (outcome === 'victory') {

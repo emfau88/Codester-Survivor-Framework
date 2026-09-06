@@ -16,6 +16,7 @@ import { ChallengeSystem } from '../systems/ChallengeSystem.js';
 import { EnemyAttackSystem } from '../systems/EnemyAttackSystem.js';
 import { EffectSettingsSystem } from '../systems/EffectSettingsSystem.js';
 import { EntitySystem } from '../systems/EntitySystem.js';
+import { GamePauseSystem } from '../systems/GamePauseSystem.js';
 import { PlayerInputSystem } from '../systems/PlayerInputSystem.js';
 import { PickupSystem } from '../systems/PickupSystem.js';
 import { LoadoutSystem } from '../systems/LoadoutSystem.js';
@@ -167,6 +168,7 @@ export class GameScene extends Phaser.Scene {
     this.pickups = new PickupSystem(this);
     this.projectileLifecycle = new ProjectileLifecycleSystem(this);
     this.playerInput = new PlayerInputSystem(this, ARENA_WIDTH, ARENA_HEIGHT);
+    this.gamePause = new GamePauseSystem(this);
     this.cameras.main.startFollow(this.player.sprite, true, 0.12, 0.12);
     this.applyResponsiveCameraZoom();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.applyResponsiveCameraZoom, this);
@@ -192,6 +194,7 @@ export class GameScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
 
     this.setupTouchInput();
+    this.setupFocusPause();
     this.setupPhysics();
     installTestApi(this);
     this.audio.playMusic('menu-theme', { fadeMs: 700 });
@@ -204,38 +207,43 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time, delta) {
+    const simulationTime = this.time.now;
     if (this.gameEnded || this.isChoosingRooster || this.isSettingsOpen) {
       return;
     }
 
     if (this.isChoosingUpgrade) {
-      this.maybeChooseBotUpgrade(time);
+      this.maybeChooseBotUpgrade();
+      return;
+    }
+
+    if (this.gamePause?.isPaused) {
       return;
     }
 
     try {
       this.debugStats.frames += 1;
       this.elapsed += delta / 1000;
-      this.enemyDangerZones = this.enemyDangerZones.filter((zone) => zone.expiresAt > time);
+      this.enemyDangerZones = this.enemyDangerZones.filter((zone) => zone.expiresAt > simulationTime);
       this.player.update(this.getMovementVector());
       this.arena.update();
-      this.roosterClasses.update(time);
+      this.roosterClasses.update(simulationTime);
       this.enemyAttacks.updateAuras(delta);
       this.enemies.forEach((enemy) => enemy.update(this.player));
       this.projectileLifecycle.update(delta);
-      this.activeAbilities.update(time);
-      this.pickups.update(time);
+      this.activeAbilities.update(simulationTime);
+      this.pickups.update(simulationTime);
       this.checkProjectileHits();
       this.projectileLifecycle.cleanup();
       this.xpOrbs.forEach((orb) => orb.update(this.player));
       if (this.isChoosingUpgrade) {
-        this.telemetry.sample(time, this.getTelemetrySample());
+        this.telemetry.sample(simulationTime, this.getTelemetrySample());
         this.updateHud();
         return;
       }
-      this.waveSystem.update(time, this.enemies.length);
-      this.autoShoot(time);
-      this.telemetry.sample(time, this.getTelemetrySample());
+      this.waveSystem.update(simulationTime, this.enemies.length);
+      this.autoShoot(simulationTime);
+      this.telemetry.sample(simulationTime, this.getTelemetrySample());
       this.updateHud();
 
       if (this.player.hp <= 0) {
@@ -269,7 +277,7 @@ export class GameScene extends Phaser.Scene {
     const returnToHub = this.isChoosingRooster;
     this.audio.play('ui-navigate');
     this.isSettingsOpen = true;
-    this.physics.pause();
+    this.gamePause.request('settings');
     this.hud.showSettings(
       this.effects.getState(),
       this.audio.getSettings(),
@@ -291,11 +299,11 @@ export class GameScene extends Phaser.Scene {
       () => {
         this.audio.play('ui-back');
         this.isSettingsOpen = false;
+        this.gamePause.release('settings');
         if (returnToHub) {
           this.runState.renderHub?.();
         } else {
           this.hud.hideOverlay();
-          this.physics.resume();
         }
       },
       returnToHub ? null : () => this.confirmReturnToHub()
@@ -330,6 +338,37 @@ export class GameScene extends Phaser.Scene {
 
   setupTouchInput() {
     return this.playerInput.setupTouchInput();
+  }
+
+  setupFocusPause() {
+    this.onFocusLost = this.handleFocusLost.bind(this);
+    window.addEventListener('blur', this.onFocusLost);
+    document.addEventListener('visibilitychange', this.onFocusLost);
+  }
+
+  handleFocusLost(force = false) {
+    if (!force && document.visibilityState === 'visible' && document.hasFocus?.()) {
+      return;
+    }
+    this.playerInput?.clearInput();
+    if (
+      this.gameEnded
+      || this.isChoosingRooster
+      || this.isChoosingUpgrade
+      || this.isSettingsOpen
+      || !this.gamePause.request('focus')
+    ) {
+      return;
+    }
+    this.hud.showFocusPause(() => {
+      if (!this.gamePause.has('focus')) {
+        return;
+      }
+      this.audio.play('ui-confirm');
+      this.gamePause.release('focus');
+      this.hud.hideOverlay();
+      this.updateHud();
+    });
   }
 
   toggleFullscreen() {
@@ -568,8 +607,8 @@ export class GameScene extends Phaser.Scene {
     return this.chooseRooster(roosterId);
   }
 
-  maybeChooseBotUpgrade(time) {
-    return this.runState.maybeChooseBotUpgrade(time);
+  maybeChooseBotUpgrade() {
+    return this.runState.maybeChooseBotUpgrade();
   }
 
   pickBotUpgrade(choices) {
@@ -780,6 +819,9 @@ export class GameScene extends Phaser.Scene {
 
   shutdown() {
     this.scale.off(Phaser.Scale.Events.RESIZE, this.applyResponsiveCameraZoom, this);
+    window.removeEventListener('blur', this.onFocusLost);
+    document.removeEventListener('visibilitychange', this.onFocusLost);
+    this.gamePause?.destroy();
     this.playerInput?.destroy();
     this.roosterClasses?.destroy();
     this.combatFeedback?.destroy();

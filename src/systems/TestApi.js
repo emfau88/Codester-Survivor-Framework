@@ -76,6 +76,7 @@ export function installTestApi(scene) {
       choosingUpgrade: scene.isChoosingUpgrade,
       choosingRooster: scene.isChoosingRooster,
       gameEnded: scene.gameEnded,
+      pause: scene.gamePause?.getState(),
       lastShotAt: scene.debugStats.lastShotAt,
       lastHitAt: scene.debugStats.lastHitAt,
       lastError: scene.debugStats.lastError,
@@ -819,6 +820,15 @@ export function installTestApi(scene) {
     startChestReward: (kind = 'elite') => {
       scene.runState.startChestReward(kind);
       return window.__ROOSTER_TEST__.getProgressionState();
+    },
+    startLevelUp: (count = 1) => {
+      scene.startLevelUp(count);
+      return window.__ROOSTER_TEST__.getProgressionState();
+    },
+    openSettings: () => scene.openSettings(),
+    pauseForFocusLoss: () => {
+      scene.handleFocusLost(true);
+      return scene.gamePause.getState();
     },
     rerollUpgradeChoices: () => scene.rerollUpgradeChoices(),
     setPlayerCombatModifiers: (modifiers = {}) => {
