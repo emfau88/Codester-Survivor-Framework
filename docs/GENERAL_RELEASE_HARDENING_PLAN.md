@@ -105,6 +105,8 @@ Für 907 × 510, 821 × 462, 390 × 844, 320 × 568 und 800 × 450:
 
 ## Phase 3 – Robuste lokale Speicherung
 
+**Status: erledigt am 7. September 2026.** `SafeStorage` fängt bereits den Zugriff auf blockiertes `localStorage` ab und hält Werte ersatzweise im Sitzungsspeicher. Der Release-Gate startet das vollständige Spiel zusätzlich mit einem absichtlich ausgelösten `SecurityError`.
+
 **Betroffene Stellen**
 
 - [MetaProgressionSystem.js](C:/Users/madde/Documents/ChatGPT/Rooster/RoosterRage/src/systems/MetaProgressionSystem.js)
@@ -128,6 +130,8 @@ Für 907 × 510, 821 × 462, 390 × 844, 320 × 568 und 800 × 450:
 - Ungültiges JSON und alte Metadaten erzeugen einen sicheren Standardzustand.
 
 ## Phase 4 – Portable, schlanke Builds
+
+**Status: erledigt am 7. September 2026.** Standalone-, Pages- und Release-Ausgaben besitzen getrennte Verzeichnisse und passende Basispfade. Release-Builds enthalten nur die finalen Rooster-Sheets und keine Store-Grafik; das Paket sank von 27,27 MiB auf 17,26 MiB und hat ein automatisches 19-MiB-Budget.
 
 **Betroffene Stellen**
 
@@ -157,6 +161,8 @@ Für 907 × 510, 821 × 462, 390 × 844, 320 × 568 und 800 × 450:
 - Größe und Dateizahl werden als CI-Artefakt protokolliert und gegenüber der Baseline verglichen.
 
 ## Phase 5 – Produktionsrenderer und Regressionstests
+
+**Status des praktisch relevanten Release-Gates: erledigt am 7. September 2026.** Der echte Build läuft ohne Test-API per WebGL aus einem Unterpfad in einem sandboxed iframe. Der Gate startet einen Run, prüft Settings/Escape, blockierten Speicher und jede fehlgeschlagene Netzwerkanfrage. Die langen Mechanik- und Balance-Suiten bleiben als separate bestehende Gates erhalten.
 
 **Betroffene Stellen**
 

@@ -1,5 +1,8 @@
 node_modules/
 dist/
+dist-pages/
+dist-release/
+dist-standalone/
 test-results/
 debug.log
 .tmp-audio-audit/

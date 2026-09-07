@@ -1,4 +1,5 @@
 import { AUDIO_PRIORITIES } from '../data/presentationStandards.js';
+import { safeStorage } from './SafeStorage.js';
 
 const STORAGE_KEY = 'rooster-rage:audio:v1';
 const AUDIO_CATEGORIES = Object.freeze(['sfx', 'ui', 'music', 'ambience']);
@@ -98,7 +99,7 @@ export class AudioSystem {
 
   loadSettings() {
     try {
-      const stored = JSON.parse(globalThis.localStorage?.getItem(STORAGE_KEY) ?? '{}');
+      const stored = JSON.parse(safeStorage.getItem(STORAGE_KEY) ?? '{}');
       return {
         enabled: typeof stored.enabled === 'boolean' ? stored.enabled : DEFAULT_AUDIO_SETTINGS.enabled,
         ...Object.fromEntries(['master', ...AUDIO_CATEGORIES].map((key) => [
@@ -113,7 +114,7 @@ export class AudioSystem {
 
   saveSettings() {
     try {
-      globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(this.getSettings()));
+      safeStorage.setItem(STORAGE_KEY, JSON.stringify(this.getSettings()));
     } catch {
       // Storage is optional; settings still apply for the current session.
     }

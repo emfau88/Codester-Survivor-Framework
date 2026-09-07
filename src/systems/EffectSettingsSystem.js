@@ -1,4 +1,5 @@
 import { EFFECT_DEFAULTS } from '../data/presentationStandards.js';
+import { safeStorage } from './SafeStorage.js';
 
 const STORAGE_KEY = 'rooster-rage:effects:v1';
 
@@ -9,7 +10,7 @@ export class EffectSettingsSystem {
 
   load() {
     try {
-      return JSON.parse(globalThis.localStorage?.getItem(STORAGE_KEY) ?? '{}');
+      return JSON.parse(safeStorage.getItem(STORAGE_KEY) ?? '{}');
     } catch {
       return {};
     }
@@ -19,7 +20,7 @@ export class EffectSettingsSystem {
     if (!(key in EFFECT_DEFAULTS)) return false;
     this.settings[key] = Boolean(value);
     try {
-      globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(this.settings));
+      safeStorage.setItem(STORAGE_KEY, JSON.stringify(this.settings));
     } catch {
       // Storage is an optional convenience; gameplay settings still apply in-memory.
     }
