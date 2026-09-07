@@ -484,7 +484,7 @@ async function testWaveCuration(browser) {
       assert(Math.abs(wave.allocatedXp - expectedXpBudgets[index]) < 0.001,
         `Wave ${wave.wave} XP allocation drifted away from its fixed budget.`, wave);
     });
-    assert(JSON.stringify(catalog[0].xpCurve.segmentShares) === JSON.stringify([0.3, 0.44, 0.1, 0.16]),
+    assert(JSON.stringify(catalog[0].xpCurve.segmentShares) === JSON.stringify([0.4, 0.34, 0.1, 0.16]),
       'Wave one does not use the approved XP-only frontload curve.', catalog[0].xpCurve);
     assert(catalog.slice(1).every((wave) => wave.xpCurve.segmentShares === null),
       'XP frontloading leaked into a later wave.', catalog.map((wave) => wave.xpCurve));

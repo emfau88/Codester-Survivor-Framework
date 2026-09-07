@@ -65,7 +65,7 @@ async function runScenario(browser, serverUrl, scenario) {
       `${scenario.id} did not reach its first upgrade.`, result);
     assert(result.wave === 1, `${scenario.id} reached the first upgrade after wave one.`, result);
     assert(Math.abs(result.waveOne.allocatedXp - 90) < 0.001
-      && JSON.stringify(result.waveOne.xpCurve.segmentShares) === JSON.stringify([0.3, 0.44, 0.1, 0.16]),
+      && JSON.stringify(result.waveOne.xpCurve.segmentShares) === JSON.stringify([0.4, 0.34, 0.1, 0.16]),
     `${scenario.id} changed the wave-one XP total or lost the frontload curve.`, result.waveOne);
     assert(errors.length === 0, `${scenario.id} reported browser errors.`, errors);
     return { ...scenario, ...result };
@@ -89,8 +89,8 @@ async function run() {
     const report = { generatedAt: new Date().toISOString(), results };
     await fs.writeFile(path.join(artifactDir, 'early-pacing-report.json'), JSON.stringify(report, null, 2));
     results.forEach((result) => {
-      assert(result.firstUpgradeAtMs >= 18000 && result.firstUpgradeAtMs <= 35000,
-        `${result.id} first upgrade is outside the 18-35 second production window.`, result);
+      assert(result.firstUpgradeAtMs >= 15000 && result.firstUpgradeAtMs <= 32000,
+        `${result.id} first upgrade is outside the 15-32 second production window.`, result);
     });
     console.log('Rooster early-upgrade pacing gate passed.');
     console.log(JSON.stringify(results.map((result) => ({

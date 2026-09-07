@@ -28,9 +28,9 @@ export const WAVE_DEFINITIONS = [
     spawnMinDistance: 300,
     primaryRoles: [],
     pressureCurve: pressureCurve({ opening: 2, pressure: 3, finale: 4 }),
-    // Preserve the 90 XP total while moving the first level-up from the
-    // recovery segment to the end of the escalation segment.
-    xpCurve: xpCurve(90, 0, [0.3, 0.44, 0.1, 0.16]),
+    // Preserve the 90 XP total while making the first upgrade land during
+    // the escalation segment across all rooster profiles.
+    xpCurve: xpCurve(90, 0, [0.4, 0.34, 0.1, 0.16]),
     composition: [
       { count: 30, enemy: { kind: 'slime' } },
       { count: 18, enemy: { kind: 'kornkrabbler' } }

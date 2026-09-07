@@ -9,7 +9,7 @@ export class Player {
     this.speed = 210;
     this.level = 1;
     this.xp = 0;
-    this.xpToNext = 60;
+    this.xpToNext = this.getXpRequirement(this.level);
     this.fireRate = 800;
     this.projectileDamage = 20;
     this.shotCount = 1;
@@ -163,7 +163,7 @@ export class Player {
   }
 
   getXpRequirement(level) {
-    const requirements = [35, 70, 105, 145, 190, 245, 305, 375, 455, 545, 645, 755];
+    const requirements = [45, 70, 105, 145, 190, 245, 305, 375, 455, 545, 645, 755];
     return requirements[Math.min(requirements.length - 1, Math.max(0, level - 1))]
       + Math.max(0, level - requirements.length) * 90;
   }

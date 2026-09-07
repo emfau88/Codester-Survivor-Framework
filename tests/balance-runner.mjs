@@ -299,7 +299,7 @@ async function run() {
         || !result.analysis.pacingOk
         || result.analysis.completedWaves !== 10
         || !Number.isFinite(firstUpgradeAtMs)
-        || firstUpgradeAtMs < 18000
+        || firstUpgradeAtMs < 15000
         || firstUpgradeAtMs > 32000;
     });
     if (runtimeFailure || strictFailure) {

@@ -64,6 +64,7 @@ export const ARENA_DEFINITIONS = [
     topology: 'compact-square',
     description: 'Short rotations, strong close-range value, and four open corner routes.',
     bounds: { x: 85, y: 45, width: 1230, height: 810 },
+    collisionInsets: { bottom: 45 },
     accent: 0xd49a55,
     weaponRatings: { ...sharedRatings, area: 1.2, orbit: 1.2, projectile: 0.9 },
     obstacles: [

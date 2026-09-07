@@ -19,7 +19,7 @@ export class EntitySystem {
   }
 
   findSafeEdgeSpawn(minDistance) {
-    const bounds = this.scene.arena?.bounds ?? {
+    const bounds = this.scene.arena?.combatBounds ?? {
       x: 0,
       y: 0,
       width: this.arenaWidth,

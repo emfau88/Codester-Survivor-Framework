@@ -145,7 +145,7 @@ export class SpawnDirector {
 
   pointOnEdge(edge, index, count, minDistance, spacing = 58) {
     const margin = 66;
-    const bounds = this.scene.arena?.bounds ?? {
+    const bounds = this.scene.arena?.combatBounds ?? {
       x: 0,
       y: 0,
       width: this.scene.entities.arenaWidth,

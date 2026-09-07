@@ -98,7 +98,7 @@ export class PlayerInputSystem {
       : Infinity;
 
     const profile = getPlayerProfile(this.scene.bot.strategy);
-    const arenaBounds = this.scene.arena?.bounds ?? {
+    const arenaBounds = this.scene.arena?.combatBounds ?? {
       x: 0,
       y: 0,
       width: this.arenaWidth,
@@ -163,7 +163,7 @@ export class PlayerInputSystem {
     const away = playerPosition.clone().subtract(bossPosition);
     const distance = Math.max(1, away.length());
     away.normalize();
-    const bounds = this.scene.arena?.bounds ?? {
+    const bounds = this.scene.arena?.combatBounds ?? {
       x: 0,
       y: 0,
       width: this.arenaWidth,
@@ -265,7 +265,7 @@ export class PlayerInputSystem {
       ));
     }
     if (escape.lengthSq() < 4) {
-      const bounds = this.scene.arena?.bounds ?? {
+      const bounds = this.scene.arena?.combatBounds ?? {
         x: 0,
         y: 0,
         width: this.arenaWidth,
@@ -337,7 +337,7 @@ export class PlayerInputSystem {
     let dodge = playerPosition.clone().subtract(mostUrgent.closestPoint);
     if (dodge.lengthSq() < 4) {
       dodge = new Phaser.Math.Vector2(-mostUrgent.velocity.y, mostUrgent.velocity.x);
-      const bounds = this.scene.arena?.bounds ?? { x: 0, y: 0, width: this.arenaWidth, height: this.arenaHeight };
+      const bounds = this.scene.arena?.combatBounds ?? { x: 0, y: 0, width: this.arenaWidth, height: this.arenaHeight };
       const arenaCenter = new Phaser.Math.Vector2(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
       if (playerPosition.clone().add(dodge).distance(arenaCenter)
         > playerPosition.clone().subtract(dodge).distance(arenaCenter)) {

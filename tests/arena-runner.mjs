@@ -54,6 +54,20 @@ async function verifyArena(browser, serverUrl, arenaId) {
       assert(snapshot.arena.bounds.x === 85 && snapshot.arena.bounds.y === 45
         && snapshot.arena.bounds.width === 1230 && snapshot.arena.bounds.height === 810,
       'Coop Square no longer matches its expanded fence footprint.', snapshot.arena.bounds);
+      assert(snapshot.arena.combatBounds.x === 85 && snapshot.arena.combatBounds.y === 45
+        && snapshot.arena.combatBounds.width === 1230 && snapshot.arena.combatBounds.height === 765,
+      'Coop Square south collision no longer matches the visible inner fence edge.', snapshot.arena.combatBounds);
+      await page.evaluate(() => {
+        const api = window.__ROOSTER_TEST__;
+        api.disableBot();
+        api.movePlayer(700, 760);
+      });
+      await page.keyboard.down('s');
+      await page.waitForTimeout(600);
+      await page.keyboard.up('s');
+      const southEdgePlayer = await page.evaluate(() => window.__ROOSTER_TEST__.getState().player);
+      assert(southEdgePlayer.y <= 800,
+        'Player can still walk onto the visible south fence.', southEdgePlayer);
       const expectedProps = [
         'square-hay-nw',
         'square-hay-se',
