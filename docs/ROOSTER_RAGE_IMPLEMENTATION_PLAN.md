@@ -12,8 +12,14 @@ Dieses Dokument ist die verbindliche Checkliste für die aus dem Gameplay-Audit 
 | Wave-1-Dauer | Retest: 30,80 s Desktop / 22,05 s Portrait | Ursache bestätigt: `directorTargetDurationMs` plant bereits 28,2 s Spawnzeit ein; den Kill-Nachlauf einrechnen und den Spawn-Zeitplan auf ca. 24–25 s senken, dann Desktop/Portrait erneut messen | aktiv – Zeitmodell korrigieren |
 | Wave-1-Sichtbarkeit | letzter Lauf: längste Lücke 1,83 s auf Desktop und Portrait | Bewegungsführende Kamera-Spawnzone, enger Eskalations-Rand und adaptiver Nachschub | erledigt |
 | Phase-3-Erstentscheidung | Retest: 26,02–35,25 s in der 1-Seed-Matrix | Fünf von sechs Szenarien bestehen das 25–35-s-Gate; Stormcrest Desktop liegt 0,25 s darüber. Multi-Seed-Abnahme und Feinabstimmung offen | aktiv – Multi-Seed-Abnahme |
+| Desktop-Rooster-Lesbarkeit | Ace 0,250, Boombardier 0,275 und Stormcrest 0,255 (bzw. 0,235 bei der älteren Storm-Grafik); keine kartenabhängige Skalierung | Sichtbare Silhouetten je Rooster vergleichen und eine gemeinsame Desktop-Vergrößerung bzw. optische Normierung entscheiden, ohne Hitboxen zu ändern | offen – visueller Abnahmeentscheid |
+| Feed Alley: Fullscreen-Zentrierung | Die Desktop-Kamera bleibt bei 1× Zoom, ihr sichtbarer Bereich ist auf breiten Monitoren größer als die 1.400 Einheiten breiten Kamera-Grenzen | Kamera-Grenzen nur für die Darstellung symmetrisch erweitern; Physik- und Spielgrenzen unverändert lassen | offen – Darstellungsfehler |
+| Feed Alley: Randnähte | Benachbarte 600er-Abschnitte wechseln zwischen zwei unabhängigen linken/rechten Randgrafiken; der 2-Pixel-Überlapp kaschiert keinen Motivsprung | Randstreifen vertikal nahtlos machen oder das Alternieren durch eine nahtlose Variante plus separate Deko ersetzen | offen – Darstellungsfehler |
+| Boombardier Primärschuss R2 | `test:weapon-progression` reproduzierbar rot: R2-Projektil und sein erwartetes Grafikprofil entstehen, aber die isolierte Schadensmessung bleibt bei 0 | Treffer-/Ziel-Telemetrie im Test ergänzen und entscheiden, ob Kollisionslogik oder der Testaufbau korrigiert werden muss; keine Balanceänderung daraus ableiten | offen – Testblocker |
 
 Regel: Jeder nicht bestandene Abnahmepunkt wird hier mit Befund und nächster Aktion eingetragen. Er wird nicht durch eine spätere Phase oder einen grünen Teiltest ersetzt.
+
+Für die vollständige Matrix gilt zusätzlich: Sie beginnt erst nach einem grünen Wave-1-Retest auf Desktop und Portrait sowie einem Stormcrest-Retest. Danach zuerst die frühe Progression (3 Rooster × 3 Karten × 2 Viewports × 10 Seeds = 180 kurze Läufe); die wesentlich längeren vollständigen Average-/Strong-Build-Runs werden getrennt und zunächst mit repräsentativer Seed-Zahl gestartet.
 
 ## Leitplanken
 
