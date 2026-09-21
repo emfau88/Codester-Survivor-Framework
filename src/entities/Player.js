@@ -97,7 +97,11 @@ export class Player {
       alpha: 0.45,
       yoyo: true,
       duration: 70,
-      repeat: 2
+      repeat: 2,
+      // Keep the player opaque after the hit flash, even if the visual is
+      // interrupted by a future effect.
+      onComplete: () => this.sprite.setAlpha(1),
+      onStop: () => this.sprite.setAlpha(1)
     });
     return true;
   }
