@@ -145,6 +145,17 @@ Die serielle 1-Seed-Pacing-Matrix auf Open Yard (drei Rooster × Desktop/Portrai
 
 Der adaptive Wave-1-Retest verbesserte die längste Sichtbarkeitslücke auf Desktop von 2,95 s auf 1,38 s und im Portrait von 1,97 s auf 1,85 s. Die adaptive Desktop-Wave dauerte jedoch 30,80 s und verfehlte damit weiterhin den 22–28-s-Korridor; Portrait bestand mit 22,05 s.
 
+## Phase-7-Abnahme – Lauf vom 21. September 2026
+
+Die technische Vertikalabnahme bestand: 12 Challenge-Szenarien über alle neun Archetypen, neun Rooster-/Karten-Szenarien (alle drei Rooster × Open Yard, Vertical Run und Square Coop), drei Viewport-Lasttests, Telegraphen-Vermeidung, Mechanics, Pacing, Pressure und der Late-Run bis 150 Gegner auf Desktop und Portrait. Der Late-Run blieb bei p95 ≈ 16,8 ms und ohne Pool-Drops.
+
+Die Gesamtfreigabe bleibt offen:
+
+- Wave 1 verfehlt mit 30,80 s auf Desktop weiterhin den 22–28-s-Korridor.
+- Die 1-Seed-Pacing-Matrix verfehlt mit Stormcrest Desktop bei 35,25 s knapp das 25–35-s-Fenster.
+- Die vollständige 10-Seed-Pacing-Matrix über alle drei Karten und die getrennte vollständige Average-/Strong-Build-Auswertung wurden deshalb noch nicht gestartet.
+- `assets:check` schlägt wegen der separaten, noch nicht optimierten Datei `art-source/enemies/animations/enemy-slime-hop-v2.png` fehl; diese Slime-Arbeit ist nicht Teil der aktuellen Phasen-0–4- bzw. Pickup/Prop-Änderungen.
+
 ## Phase 5 – Selektiver Physical-Comedy-Polish
 
 - [ ] Ace-Schussreaktion ergänzen.
