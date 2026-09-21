@@ -67,7 +67,11 @@ export class SpawnDirector {
     this.queue = [...queue];
     const curve = wave.pressureCurve?.length ? wave.pressureCurve : DEFAULT_CURVE;
     const budgets = allocateBudgets(queue.length, curve);
-    const targetMs = wave.directorTargetDurationMs
+    const viewport = getSceneViewport(this.scene);
+    const requestedTargetMs = wave.directorTargetDurationMs;
+    const targetMs = (requestedTargetMs && typeof requestedTargetMs === 'object'
+      ? (viewport.height > viewport.width ? requestedTargetMs.portrait : requestedTargetMs.desktop)
+      : requestedTargetMs)
       ?? ((wave.targetDuration?.[0] ?? 25) + (wave.targetDuration?.[1] ?? 35)) * 500;
     this.segments = curve.map((segment, index) => {
       const budget = budgets[index];
@@ -298,7 +302,7 @@ export class SpawnDirector {
           preferPlayerVelocity: true,
           approachDistance: pattern === 'pulse'
             ? this.wave.spawnPulseApproachDistance
-            : undefined
+            : this.wave.spawnApproachDistance
         })
       ));
     }

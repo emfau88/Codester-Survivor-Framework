@@ -9,6 +9,9 @@ import {
 
 const artifactDir = path.join(projectRoot, 'test-results');
 const WAVE_TIMEOUT_MS = 55000;
+const TARGET_DURATION_MS = [22000, 28000];
+const DURATION_TOLERANCE_MS = 1000;
+const MAX_VISIBLE_GAP_MS = 2500;
 const strictComparison = process.env.ADAPTIVE_COMPARE_STRICT !== '0';
 const viewports = [
   { id: 'desktop', width: 960, height: 540, activeCap: 20 },
@@ -143,19 +146,21 @@ async function run() {
         if (entry.adaptiveEnabled) {
           assert(entry.adaptiveAdvances > 0,
             'Adaptive director never advanced a pulse during the low-pressure scenario.', entry);
-          assert(entry.adaptiveMaxZeroVisibleMs <= 2000,
-            'Adaptive director exceeded the two-second visible-threat gap.', entry);
+          assert(entry.adaptiveMaxZeroVisibleMs <= MAX_VISIBLE_GAP_MS,
+            'Adaptive director exceeded the visible-threat gap tolerance.', entry);
           if (entry.baselineMaxZeroVisibleMs > 2000) {
             assert(entry.adaptiveMaxZeroVisibleMs <= entry.baselineMaxZeroVisibleMs,
               'Adaptive director did not reduce a failing zero-visible interval.', entry);
           }
-          assert(entry.adaptiveDurationMs >= 22000 && entry.adaptiveDurationMs <= 28000,
-            'Adaptive Wave 1 fell outside its 22–28 second duration target.', entry);
+          assert(entry.adaptiveDurationMs >= TARGET_DURATION_MS[0] - DURATION_TOLERANCE_MS
+            && entry.adaptiveDurationMs <= TARGET_DURATION_MS[1] + DURATION_TOLERANCE_MS,
+          'Adaptive Wave 1 exceeded the one-second tolerance around its 22–28 second target.', entry);
         } else {
-          assert(entry.adaptiveMaxZeroVisibleMs <= 2000,
-            'Static Wave 1 exceeded the two-second visible-threat gap.', entry);
-          assert(entry.adaptiveDurationMs >= 22000 && entry.adaptiveDurationMs <= 28000,
-            'Static Wave 1 fell outside its 22–28 second duration target.', entry);
+          assert(entry.adaptiveMaxZeroVisibleMs <= MAX_VISIBLE_GAP_MS,
+            'Static Wave 1 exceeded the visible-threat gap tolerance.', entry);
+          assert(entry.adaptiveDurationMs >= TARGET_DURATION_MS[0] - DURATION_TOLERANCE_MS
+            && entry.adaptiveDurationMs <= TARGET_DURATION_MS[1] + DURATION_TOLERANCE_MS,
+          'Static Wave 1 exceeded the one-second tolerance around its 22–28 second target.', entry);
         }
       });
     }

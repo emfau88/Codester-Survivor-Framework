@@ -24,7 +24,7 @@ export const WAVE_DEFINITIONS = [
     targetDuration: [22, 28],
     // Let the controlled adaptive advances consume the upper end of the
     // player-facing window rather than shortening the Wave below 22 seconds.
-    directorTargetDurationMs: 28200,
+    directorTargetDurationMs: { desktop: 27600, portrait: 28900 },
     targetPeak: 18,
     activeCap: 20,
     mobileActiveCap: 18,
@@ -35,9 +35,10 @@ export const WAVE_DEFINITIONS = [
     // the first threat crosses into view instead of trailing behind it.
     spawnPlayerLeading: true,
     spawnEdgePreference: 'nearest-safe',
+    spawnApproachDistance: 64,
     // Escalation consists of single pulses; stage them at the inner rim so a
     // portrait player never clears one before the next pulse becomes visible.
-    spawnPulseApproachDistance: 96,
+    spawnPulseApproachDistance: 64,
     spawnTargetBuffer: 2,
     primaryRoles: [],
     pressureCurve: [
@@ -46,9 +47,9 @@ export const WAVE_DEFINITIONS = [
       { id: 'recover', share: 0.15, durationShare: 0.18, batch: 1, pattern: 'scatter', pauseAfter: 480 },
       { id: 'finale', share: 0.25, durationShare: 0.27, batch: 1, pattern: 'surround', pauseAfter: 0 }
     ],
-    // Wave 1 teaches movement without an immediate upgrade. Its deferred XP
-    // moves to Wave 2, preserving the combined opening budget.
-    xpCurve: xpCurve(40, 0, [0.4, 0.34, 0.1, 0.16]),
+    // End one XP short of the first level so the first Wave-2 contact, rather
+    // than route-dependent orb cleanup, opens the first upgrade choice.
+    xpCurve: xpCurve(44, 0, [0.4, 0.34, 0.1, 0.16]),
     composition: [
       { count: 15, enemy: { kind: 'slime' } },
       { count: 9, enemy: { kind: 'kornkrabbler' } }
@@ -68,7 +69,7 @@ export const WAVE_DEFINITIONS = [
     pressureCurve: pressureCurve({ opening: 2, pressure: 4, finale: 6, finalePattern: 'rusher-line' }),
     // Recover the deferred opening XP early in Wave 2 so slow profiles and
     // portrait movement reach the first decision before the 32-second cap.
-    xpCurve: xpCurve(164, 0, [0.28, 0.34, 0.14, 0.24]),
+    xpCurve: xpCurve(159, 0, [0.28, 0.34, 0.14, 0.24]),
     composition: [
       { count: 26, enemy: { kind: 'slime' } },
       { count: 24, enemy: { kind: 'kornkrabbler' } },

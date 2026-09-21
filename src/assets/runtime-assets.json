@@ -536,21 +536,21 @@
     },
     {
       "source": "art-source/map/arena-feed-alley-left.png",
-      "sourceSha256": "cc3647185627e7a95262bf68b81852207e289a039a4b3bb256d49d073110945c",
+      "sourceSha256": "2ac016bdea9103544e543b840c12317b0e8f5b0bddeaa7af42231a2b69720635",
       "runtime": "src/assets/map/arena-feed-alley-left.webp",
-      "runtimeSha256": "67fe47bc46880e1eb4165b9a14d34009eb01209fa0b123cb4409e3d54bc2c800",
+      "runtimeSha256": "2779ec07b44f02c5e9b3a494c412a589ccd44d8e7511ad6d30ae776d7481fc9b",
       "width": 300,
       "height": 600,
-      "bytes": 37098
+      "bytes": 81088
     },
     {
       "source": "art-source/map/arena-feed-alley-right.png",
-      "sourceSha256": "a3db4f75d4349844380f73b3980a65a810dfa4f218d0d06e2635916ebaff0940",
+      "sourceSha256": "3266550f29363730fb310288c7bb4d316b9f0a3a21618bf642b156b242492441",
       "runtime": "src/assets/map/arena-feed-alley-right.webp",
-      "runtimeSha256": "0779845788d170da5dea8084332ca23c281a7e522b88ea1fade23edae52d81e8",
+      "runtimeSha256": "4419b2f8da291e663ef65db1a5ce2006bb9cf183efc2b7d47ca33dc25faa4cbe",
       "width": 300,
       "height": 600,
-      "bytes": 56510
+      "bytes": 79638
     },
     {
       "source": "art-source/map/arena-feed-alley-left-v2.png",

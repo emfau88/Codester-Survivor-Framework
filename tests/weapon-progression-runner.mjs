@@ -114,6 +114,9 @@ async function spawnTargetsAndTrigger(page, weapon, stage) {
     api.clearEnemies();
     if (!companion) api.clearProjectiles();
     api.movePlayer(700, 450);
+    const safeShowcaseCluster = [
+      [220, -48], [230, 48], [260, -78], [260, 78], [292, -34], [292, 34]
+    ];
     for (let index = 0; index < 14; index += 1) {
       const angle = (Math.PI * 2 * index) / 14;
       const showcaseProjectile = [
@@ -126,10 +129,13 @@ async function spawnTargetsAndTrigger(page, weapon, stage) {
       const nearRadius = showcaseProjectile ? 170 : 82;
       const farRadius = showcaseProjectile ? 245 : 145;
       const radius = index < 6 ? nearRadius : farRadius + (index % 3) * 34;
+      const showcasePoint = showcaseProjectile && index < safeShowcaseCluster.length
+        ? safeShowcaseCluster[index]
+        : null;
       api.spawnEnemyType(
         'slime',
-        700 + Math.cos(angle) * radius,
-        450 + Math.sin(angle) * radius,
+        700 + (showcasePoint?.[0] ?? Math.cos(angle) * radius),
+        450 + (showcasePoint?.[1] ?? Math.sin(angle) * radius),
         { hp: 9999, speed: 0, damage: 0, xpOverride: 0 }
       );
     }
@@ -296,10 +302,13 @@ async function captureStage(page, weapon, stage, expectedRank, source) {
     assert(areaAtFlight.rocketFlights.length === 1
       && areaAtFlight.rocketFlights[0].texture === expected.texture,
     `Rocket Egg ${stage} did not begin with its dedicated lead rocket.`, { expected, areaAtFlight });
-    await page.waitForFunction((flightCount) => (
-      window.__ROOSTER_TEST__.getAreaEffectState().rocketFlights.length >= flightCount
-    ), expected.count, { timeout: 700 });
-    const flightState = await page.evaluate(() => window.__ROOSTER_TEST__.getAreaEffectState());
+    let flightState = areaAtFlight;
+    if (expected.count > 1) {
+      await page.waitForFunction((flightCount) => (
+        window.__ROOSTER_TEST__.getAreaEffectState().rocketFlights.length >= flightCount
+      ), expected.count, { timeout: 700 });
+      flightState = await page.evaluate(() => window.__ROOSTER_TEST__.getAreaEffectState());
+    }
     assert(flightState.rocketFlights.length === expected.count
       && flightState.rocketFlights.every((flight) => (
         flight.texture === expected.texture

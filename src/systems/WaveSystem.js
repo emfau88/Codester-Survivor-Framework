@@ -3,6 +3,7 @@ import { ENCOUNTER_STANDARDS, ENEMY_ROLE_MATRIX } from '../data/enemyRoleDefinit
 import { allocateBudgets, SpawnDirector } from './SpawnDirector.js';
 
 const STRANDED_CLEANUP_GRACE_MS = 10000;
+const OPENING_WAVE_CLEANUP_GRACE_MS = 0;
 const STRANDED_CLEANUP_MAX_ENEMIES = 3;
 const STRANDED_CLEANUP_ATTEMPTS = 12;
 
@@ -156,9 +157,15 @@ export class WaveSystem {
     return {
       candidateSince: this.cleanupCandidateSince,
       recoveries: this.cleanupRecoveries,
-      graceMs: STRANDED_CLEANUP_GRACE_MS,
+      graceMs: this.getCleanupGraceMs(),
       maxEnemies: STRANDED_CLEANUP_MAX_ENEMIES
     };
+  }
+
+  getCleanupGraceMs() {
+    return this.active && this.currentWave === 1
+      ? OPENING_WAVE_CLEANUP_GRACE_MS
+      : STRANDED_CLEANUP_GRACE_MS;
   }
 
   recoverStrandedEnemies(time) {
@@ -171,7 +178,15 @@ export class WaveSystem {
     const eligible = activeEnemies.length > 0
       && activeEnemies.length <= STRANDED_CLEANUP_MAX_ENEMIES
       && activeEnemies.every((enemy) => !enemy.boss);
-    if (!eligible || this.scene.getTargetableEnemies().length > 0) {
+    const openingWave = this.active && this.currentWave === 1;
+    const view = this.scene.cameras.main.worldView;
+    const hasVisibleEnemy = activeEnemies.some((enemy) => (
+      enemy.sprite.x >= view.x
+      && enemy.sprite.x <= view.x + view.width
+      && enemy.sprite.y >= view.y
+      && enemy.sprite.y <= view.y + view.height
+    ));
+    if (!eligible || (openingWave ? hasVisibleEnemy : this.scene.getTargetableEnemies().length > 0)) {
       this.resetCleanupWatch();
       return 0;
     }
@@ -180,13 +195,13 @@ export class WaveSystem {
       this.cleanupCandidateSince = time;
       return 0;
     }
-    if (time - this.cleanupCandidateSince < STRANDED_CLEANUP_GRACE_MS) {
+    if (time - this.cleanupCandidateSince < this.getCleanupGraceMs()) {
       return 0;
     }
 
     let recovered = 0;
     activeEnemies.forEach((enemy, index) => {
-      const destination = this.findCleanupRecoveryPoint(enemy, index);
+      const destination = this.findCleanupRecoveryPoint(enemy, index, openingWave);
       if (!destination) return;
       const distance = Math.hypot(
         enemy.sprite.x - this.scene.player.sprite.x,
@@ -215,10 +230,12 @@ export class WaveSystem {
     return recovered;
   }
 
-  findCleanupRecoveryPoint(enemy, index) {
+  findCleanupRecoveryPoint(enemy, index, visibleOnly = false) {
     const player = this.scene.player.sprite;
     const bounds = this.scene.getTargetAcquisitionBounds();
-    const distance = Math.max(220, Math.min(330, Math.min(bounds.visibleWidth, bounds.visibleHeight) * 0.7));
+    const distance = visibleOnly
+      ? Math.max(140, Math.min(210, Math.min(bounds.visibleWidth, bounds.visibleHeight) * 0.35))
+      : Math.max(220, Math.min(330, Math.min(bounds.visibleWidth, bounds.visibleHeight) * 0.7));
     const seed = ((enemy.id ?? 0) + index + this.cleanupRecoveries) * 2.399963229728653;
     for (let attempt = 0; attempt < STRANDED_CLEANUP_ATTEMPTS; attempt += 1) {
       const angle = seed + (attempt / STRANDED_CLEANUP_ATTEMPTS) * Math.PI * 2;
@@ -227,10 +244,18 @@ export class WaveSystem {
         player.y + Math.sin(angle) * distance,
         80
       );
-      const targetable = point.x >= bounds.x
-        && point.x <= bounds.x + bounds.width
-        && point.y >= bounds.y
-        && point.y <= bounds.y + bounds.height;
+      const targetBounds = visibleOnly
+        ? {
+          x: bounds.visibleX,
+          y: bounds.visibleY,
+          width: bounds.visibleWidth,
+          height: bounds.visibleHeight
+        }
+        : bounds;
+      const targetable = point.x >= targetBounds.x
+        && point.x <= targetBounds.x + targetBounds.width
+        && point.y >= targetBounds.y
+        && point.y <= targetBounds.y + targetBounds.height;
       if (targetable
         && this.scene.arena.isInsidePlayable(point.x, point.y, 50)
         && !this.scene.arena.overlapsObstacle(point.x, point.y, 42)) {

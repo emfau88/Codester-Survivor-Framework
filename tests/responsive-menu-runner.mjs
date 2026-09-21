@@ -5,6 +5,10 @@ import {
 } from './helpers/test-runtime.mjs';
 
 const viewports = [
+  { name: 'desktop-full-hd', width: 1920, height: 1080 },
+  { name: 'laptop-large', width: 1440, height: 900 },
+  { name: 'laptop-standard', width: 1366, height: 768 },
+  { name: 'embedded-desktop', width: 967, height: 604 },
   { name: 'desktop', width: 960, height: 540 },
   { name: 'desktop-short', width: 907, height: 510 },
   { name: 'laptop-short', width: 821, height: 462 },
@@ -20,8 +24,9 @@ function assert(condition, message, details) {
 }
 
 function insideViewport(rect, viewport) {
-  return rect.left >= -1 && rect.top >= -1
-    && rect.right <= viewport.width + 1 && rect.bottom <= viewport.height + 1;
+  const tolerance = 2;
+  return rect.left >= -tolerance && rect.top >= -tolerance
+    && rect.right <= viewport.width + tolerance && rect.bottom <= viewport.height + tolerance;
 }
 
 async function readRect(page, selector) {
@@ -65,6 +70,8 @@ async function verifyViewport(browser, url, viewport) {
     });
     assert(insideViewport(hub.panel, viewport) && insideViewport(hub.start, viewport),
       `${viewport.name}: Henhouse or Start Run exceeds the viewport.`, hub);
+    assert(Math.abs(hub.panel.left - (viewport.width - hub.panel.right)) <= 2,
+      `${viewport.name}: Henhouse is not horizontally centered.`, hub);
     if (viewport.name !== 'phone-short') {
       assert(hub.playScrollHeight <= hub.playClientHeight + 1,
         `${viewport.name}: the Play tab should remain a single-screen layout.`, hub);

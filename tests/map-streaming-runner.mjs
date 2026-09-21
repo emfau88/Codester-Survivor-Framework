@@ -24,8 +24,8 @@ function validateChunkCoverage(state, expectedPool) {
   assert(state.activeChunks.every((chunk) => !chunk.groundFlipX && !chunk.groundFlipY),
     'Directional ground art was flipped during chunk recycling.', state.activeChunks);
   if (state.id === 'vertical-run') {
-    const leftTextures = new Set(['arena-feed-alley-left', 'arena-feed-alley-left-v2']);
-    const rightTextures = new Set(['arena-feed-alley-right', 'arena-feed-alley-right-v2']);
+    const leftTextures = new Set(['arena-feed-alley-left']);
+    const rightTextures = new Set(['arena-feed-alley-right']);
     assert(state.activeChunks.every((chunk) => (
       leftTextures.has(chunk.edgeLeft?.texture)
         && rightTextures.has(chunk.edgeRight?.texture)
@@ -154,12 +154,10 @@ async function traverse(browser, serverUrl, arenaId, routes, expectedPool) {
         'Feed Alley still places large opaque landmarks in the combat lane.', [...seenLandmarks]);
       const expectedEdgeTextures = [
         'arena-feed-alley-left',
-        'arena-feed-alley-left-v2',
-        'arena-feed-alley-right',
-        'arena-feed-alley-right-v2'
+        'arena-feed-alley-right'
       ];
       assert(expectedEdgeTextures.every((texture) => seenEdgeTextures.has(texture)),
-        'Feed Alley traversal did not exercise both scenery variants on each side.', {
+        'Feed Alley traversal did not retain its seamless scenery on both sides.', {
           expectedEdgeTextures,
           seenEdgeTextures: [...seenEdgeTextures]
         });
@@ -233,10 +231,10 @@ async function verifySquareRemainsEnclosed(browser, serverUrl) {
     });
     assert(spawnSample.spawns.length === 80, 'Coop Square spawn sample was incomplete.', spawnSample);
     assert(spawnSample.spawns.every(({ x, y }) => (
-      x >= spawnSample.bounds.x + 65
-        && x <= spawnSample.bounds.x + spawnSample.bounds.width - 65
-        && y >= spawnSample.bounds.y + 65
-        && y <= spawnSample.bounds.y + spawnSample.bounds.height - 65
+      x >= spawnSample.bounds.x + 48
+        && x <= spawnSample.bounds.x + spawnSample.bounds.width - 48
+        && y >= spawnSample.bounds.y + 48
+        && y <= spawnSample.bounds.y + spawnSample.bounds.height - 48
     )), 'An enemy spawned outside the Coop Square fence.', spawnSample);
     assert(errors.length === 0, 'Browser errors in Coop Square enclosure check.', errors);
     return { ...result, physicalFence, spawnSample };

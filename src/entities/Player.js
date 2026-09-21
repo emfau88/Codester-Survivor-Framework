@@ -37,6 +37,7 @@ export class Player {
     this.upgradeRanks = new Map();
     this.invulnerableUntil = 0;
     this.baseScale = 0.25;
+    this.collisionReferenceScale = this.baseScale;
 
     this.sprite = scene.physics.add.sprite(x, y, this.roosterTextureKey, 0);
     this.sprite.setScale(this.baseScale);
@@ -164,6 +165,17 @@ export class Player {
     this.sprite.setTexture(textureKey, 0);
     this.sprite.setFlipX(this.shouldFlipHorizontal(this.lastMoveDirection));
     this.sprite.play(`rooster-${roosterId}-walk-${this.lastMoveDirection}`, true);
+  }
+
+  setVisualScale(scale, collisionReferenceScale = scale) {
+    this.baseScale = scale;
+    this.collisionReferenceScale = collisionReferenceScale;
+    this.sprite.setScale(scale);
+    // Keep the existing gameplay footprint and its authored footward offset
+    // while allowing the artwork to be a little larger on desktop.
+    const radius = 58 * collisionReferenceScale / scale;
+    const centerYOffset = 16 * collisionReferenceScale / scale;
+    this.sprite.setCircle(radius, 128 - radius, 128 + centerYOffset - radius);
   }
 
   getXpRequirement(level) {

@@ -473,7 +473,7 @@ async function testWaveCuration(browser) {
       { slime: 77, kornkrabbler: 98, brute: 20, 'fan-spitter': 6, support: 6, summoner: 2, 'elite-brute': 1 },
       { boss: 1 }
     ];
-    const expectedXpBudgets = [40, 164, 138, 165, 195, 228, 340, 384, 448, 0];
+    const expectedXpBudgets = [44, 159, 138, 165, 195, 228, 340, 384, 448, 0];
     assert(catalog.length === 10, 'Wave catalog should contain exactly ten waves.', catalog);
     catalog.forEach((wave, index) => {
       assert(wave.queue.length === wave.count, `Wave ${wave.wave} queue length does not match its budget.`, wave);

@@ -286,12 +286,11 @@ export class ArenaSystem {
     if (this.id === 'vertical-run') {
       const world = this.playableWorldBounds;
       const edgeWidth = 300;
-      const useVariant = Math.abs(chunkY) % 2 === 1;
-      record.edgeLeft.setTexture(useVariant ? 'arena-feed-alley-left-v2' : 'arena-feed-alley-left')
+      record.edgeLeft.setTexture('arena-feed-alley-left')
         .setPosition(world.x - edgeWidth / 2, centerY)
         .setFlip(false, false)
         .setDisplaySize(edgeWidth + 2, height + 2).setVisible(true);
-      record.edgeRight.setTexture(useVariant ? 'arena-feed-alley-right-v2' : 'arena-feed-alley-right')
+      record.edgeRight.setTexture('arena-feed-alley-right')
         .setPosition(world.x + world.width + edgeWidth / 2, centerY)
         .setFlip(false, false)
         .setDisplaySize(edgeWidth + 2, height + 2).setVisible(true);

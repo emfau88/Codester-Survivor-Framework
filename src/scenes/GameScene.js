@@ -396,22 +396,35 @@ export class GameScene extends Phaser.Scene {
     const { width, height } = getSceneViewport(this);
     const renderScale = getSceneRenderScale(this);
     const isPortraitMobile = width <= PORTRAIT_MOBILE_MAX_WIDTH && height > width;
+    let logicalZoom;
     if (!isPortraitMobile) {
-      this.logicalCameraZoom = 1;
-      this.cameras.main.setZoom(renderScale);
-      return;
+      logicalZoom = 1;
+    } else if (this.arena?.id === 'vertical-run' && width <= FEED_ALLEY_PORTRAIT_MAX_WIDTH) {
+      logicalZoom = FEED_ALLEY_PORTRAIT_ZOOM;
+    } else {
+      const renderHeight = ARENA_HEIGHT + ARENA_RENDER_PADDING_Y * 2;
+      const minimumCoverZoom = Math.max(width / ARENA_WIDTH, height / renderHeight);
+      logicalZoom = Math.max(PORTRAIT_MOBILE_ZOOM, minimumCoverZoom);
     }
-
-    if (this.arena?.id === 'vertical-run' && width <= FEED_ALLEY_PORTRAIT_MAX_WIDTH) {
-      this.logicalCameraZoom = FEED_ALLEY_PORTRAIT_ZOOM;
-      this.cameras.main.setZoom(this.logicalCameraZoom * renderScale);
-      return;
-    }
-
-    const renderHeight = ARENA_HEIGHT + ARENA_RENDER_PADDING_Y * 2;
-    const minimumCoverZoom = Math.max(width / ARENA_WIDTH, height / renderHeight);
-    this.logicalCameraZoom = Math.max(PORTRAIT_MOBILE_ZOOM, minimumCoverZoom);
+    this.logicalCameraZoom = logicalZoom;
     this.cameras.main.setZoom(this.logicalCameraZoom * renderScale);
+    this.applyResponsiveCameraBounds(width);
+    this.roosterClasses?.applyResponsiveVisualScale();
+  }
+
+  applyResponsiveCameraBounds(viewportWidth) {
+    if (!this.arena) return;
+    const world = this.arena.worldBounds;
+    let x = world.x;
+    let width = world.width;
+    if (this.arena.id === 'vertical-run') {
+      const visibleWorldWidth = viewportWidth / this.logicalCameraZoom;
+      if (visibleWorldWidth > world.width) {
+        x -= (visibleWorldWidth - world.width) / 2;
+        width = visibleWorldWidth;
+      }
+    }
+    this.cameras.main.setBounds(x, world.y, width, world.height);
   }
 
   updatePointerVector(pointer) {
@@ -678,10 +691,18 @@ export class GameScene extends Phaser.Scene {
       name: config.name,
       bossWave: config.bossWave ?? false
     });
+    if (wave === 2) {
+      this.time.delayedCall(3500, () => {
+        if (this.gameEnded || this.waveSystem.currentWave < 2) return;
+        this.entities.spawnXp(this.player.sprite.x, this.player.sprite.y, 1);
+        this.telemetry.record('openingXpBridgeSpawned', this.time.now, { wave: 2, xp: 1 });
+      });
+    }
   }
 
   onWaveCompleted(wave) {
     if (wave < this.waveSystem.totalWaves) {
+      this.entities.flushBundledMicroXp(this.player.sprite.x, this.player.sprite.y);
       const sweptXp = this.collisions.collectAllXp();
       if (sweptXp > 0) {
         this.telemetry.record('waveXpSwept', this.time.now, { wave, xp: sweptXp });
