@@ -125,7 +125,6 @@ export class ArenaSystem {
 
   renderTopology() {
     const { scene, definition } = this;
-    const center = this.getCenter();
     if (!this.streaming) {
       const { x, y, width, height } = definition.bounds;
       if (definition.id !== 'square-coop') {
@@ -134,14 +133,9 @@ export class ArenaSystem {
           .setDepth(1);
       }
     }
-    this.title = scene.add.text(center.x - 250, center.y - 380, definition.name.toUpperCase(), {
-      color: '#fff4cf',
-      fontFamily: 'system-ui, sans-serif',
-      fontSize: '18px',
-      fontStyle: 'bold',
-      stroke: '#1e1710',
-      strokeThickness: 4
-    }).setAlpha(definition.id === 'square-coop' ? 0 : 0.52).setDepth(2);
+    // Arena identity belongs to the fixed HUD intro. World-space lettering
+    // looked baked into the ground and drifted through streaming arenas.
+    this.title = null;
   }
 
   createObstacles() {

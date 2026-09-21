@@ -959,6 +959,17 @@ export class HUD {
   }
 
   showEndScreen(title, message, report = {}) {
+    window.clearTimeout(this.waveBannerTimeout);
+    window.clearTimeout(this.upgradeConfirmationTimeout);
+    this.waveBanner.classList.remove('is-visible');
+    this.upgradeConfirmation.classList.remove('is-visible');
+    this.multiKill?.classList.remove('is-visible');
+    this.waveBanner.replaceChildren();
+    this.upgradeConfirmation.replaceChildren();
+    this.waveBanner.hidden = true;
+    this.upgradeConfirmation.hidden = true;
+    this.root.hidden = true;
+    this.joystick.hidden = true;
     const sources = report.combatSources ?? [];
     const sourceRows = sources.length
       ? sources.slice(0, 10).map((source) => `
@@ -987,8 +998,8 @@ export class HUD {
       mastery: 'Mastery',
       'first-clear': 'First clear'
     };
-    const unlocks = (report.newUnlocks ?? []).map((unlock) => `
-      <article class="run-report__unlock-card">
+    const unlocks = (report.newUnlocks ?? []).map((unlock, index) => `
+      <article class="run-report__unlock-card" data-unlock-type="${unlock.type}" style="--unlock-index:${index}">
         <i data-report-icon="${this.iconIdFromUnlock(unlock)}"></i>
         <span><small>${unlockLabels[unlock.type] ?? 'Progress'}</small><strong>${this.formatSource(unlock.id)}</strong></span>
       </article>
@@ -1020,7 +1031,13 @@ export class HUD {
           <span><strong>+${metaReward.earnedKernels} kernels</strong><small>Run ${metaReward.runKernels}${metaReward.firstClearKernels ? ` · First clear ${metaReward.firstClearKernels}` : ''}${metaReward.masteryKernels ? ` · Mastery ${metaReward.masteryKernels}` : ''} · Balance ${metaReward.balance}</small></span>
           <b>Mastery ${metaReward.masteryLevel} · +${metaReward.masteryXp} XP</b>
         </div>` : ''}
-        ${unlocks ? `<div class="run-report__unlocks"><h2>Newly unlocked</h2>${unlocks}</div>` : ''}
+        ${unlocks ? `<section class="run-report__unlocks" aria-live="polite">
+          <header class="run-report__unlocks-heading">
+            <i data-report-icon="badge-5"></i>
+            <span><small>RUN REWARDS</small><h2>Newly unlocked</h2><p>Ready to use in the Henhouse</p></span>
+          </header>
+          ${unlocks}
+        </section>` : ''}
         <div class="run-report__table-wrap">
           <table>
             <thead><tr><th>Source</th><th>Damage</th><th>Share</th><th>Hits</th><th>Kills</th><th>Overkill</th><th>Active</th></tr></thead>
@@ -1203,8 +1220,17 @@ export class HUD {
     this.showEncounterBanner(`Wave ${wave}: ${config.name}`, config.intent ?? '', config.bossWave ? 'boss' : 'wave');
   }
 
+  showArenaBanner(arenaName, challengeName, waveConfig) {
+    this.showEncounterBanner(
+      arenaName,
+      `${challengeName} · Wave 1: ${waveConfig.name}`,
+      'arena'
+    );
+  }
+
   showEncounterBanner(title, subtitle = '', tier = 'elite') {
     window.clearTimeout(this.waveBannerTimeout);
+    this.waveBanner.hidden = false;
     this.waveBanner.className = `wave-banner wave-banner--${tier}`;
     this.waveBanner.innerHTML = `<strong>${title}</strong>${subtitle ? `<small>${subtitle}</small>` : ''}`;
     this.waveBanner.classList.remove('is-visible');
@@ -1362,6 +1388,7 @@ export class HUD {
     if (!upgrade || !this.upgradeConfirmation) {
       return;
     }
+    this.upgradeConfirmation.hidden = false;
     const rank = upgrade.evolution
       ? 'EVO'
       : upgrade.consumable
@@ -1470,8 +1497,9 @@ export class HUD {
   }
 
   iconIdFromUnlock(unlock) {
-    if (unlock.type === 'rooster') return 'active-upgrade';
-    if (unlock.type === 'mastery') return 'badge-5';
+    if (unlock.type === 'rooster') return `primary-${unlock.id}`;
+    if (unlock.type === 'cosmetic') return `primary-${String(unlock.id).split('-')[0]}`;
+    if (unlock.type === 'mastery') return `badge-${Math.min(5, Math.max(1, unlock.level ?? 5))}`;
     if (unlock.type === 'challenge') return 'badge-3';
     if (unlock.type === 'first-clear') return 'badge-1';
     return 'golden-egg';

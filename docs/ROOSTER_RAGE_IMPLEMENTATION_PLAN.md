@@ -16,7 +16,7 @@ Dieses Dokument ist die verbindliche Checkliste für die aus dem Gameplay-Audit 
 | Feed Alley: Fullscreen-Zentrierung | Kamera-Darstellung auf breiten Viewports symmetrisch; Spiel- und Physikgrenzen unverändert | Responsive Gate beibehalten | erledigt |
 | Feed Alley: Randnähte | Neue vertikal nahtlose linke/rechte Randstreifen; keine wechselnden, inkompatiblen Varianten mehr | Quell- und Runtime-Assets gemeinsam versionieren | erledigt |
 | Boombardier Primärschuss R2 | Gameplay war intakt; die Testziele lagen ungünstig bzw. die Mehrfachraketen wurden in einem zu kurzen gemeinsamen Zeitfenster beobachtet | Deterministischen freien Zielkorridor und robuste Flugbeobachtung beibehalten | erledigt – vollständige Waffenprogression grün |
-| Desktop-Menüs | Hauptmenü, Einstellungen und Upgrade-Auswahl auf 1920×1080, 1440×900, 1366×768, 967×604 sowie kurzen Landscape-/Portrait-Formaten geprüft | Responsive Gate als Release-Pflichttest beibehalten | erledigt |
+| Desktop-Menüs | Hauptmenü, Einstellungen und Upgrade-Auswahl auf 1920×1080, 1440×900, 1366×768, 967×604 sowie kurzen Landscape-/Portrait-Formaten geprüft; der äußere Hub-Rahmen bleibt beim Reiterwechsel stabil und zentriert | Responsive Gate inklusive Geometrievergleich aller vier Hub-Reiter als Release-Pflichttest beibehalten | erledigt |
 
 Regel: Jeder nicht bestandene Abnahmepunkt wird hier mit Befund und nächster Aktion eingetragen. Er wird nicht durch eine spätere Phase oder einen grünen Teiltest ersetzt.
 
@@ -169,14 +169,15 @@ Die technische Freigabe dieses Änderungspakets ist erreicht. Für die eigentlic
 - [ ] **Open Yard ausdünnen:** Brunnen entstehen aktuell ungefähr in jedem elften geeigneten Chunk, Scheunen in jedem neunzehnten. Vorschlag: Brunnen ebenfalls auf ungefähr jeden 17.–19. Chunk begrenzen und direkt benachbarte Landmarken verhindern.
 - [ ] **Zerstörbarkeit verständlich machen:** Kisten und Heuballen sind zerstörbar; Brunnen, Scheunen, Wände und feste Kartenarchitektur nicht. Vorschlag: zerstörbare Props mit konsistentem Rand/Schadensdekal markieren und beim ersten Lauf kurz erklären: „Kisten und Heu können Vorräte enthalten.“
 - [ ] **Prop-Drops kommunizieren:** Ab Wave 2 besteht pro zerstörtem Prop eine 42-%-Chance auf Heal, Magnet oder Bombe, höchstens ein Prop-Drop pro Wave und drei pro Run. Diese Mechanik funktioniert, ist im Spiel aber noch nicht ausreichend erklärt.
-- [ ] **Eingebrannte Kartennamen entfernen:** Open Yard und Feed Alley zeigen den Namen derzeit halbtransparent im Kampffeld. Vorschlag: durch einen 1,5-s-Intro-Banner im HUD ersetzen; Coop Square blendet ihn bereits aus.
-- [ ] **Kosmetik klar benennen:** Jeder Rooster besitzt Original plus eine freischaltbare Farbvariante. Die Varianten ändern ausschließlich den Tint und keine Werte. Im Menü „Cosmetic · no gameplay change“ ergänzen; später je Variante ein kleines Accessoire oder Silhouettenmerkmal erwägen.
-- [ ] **Run-Report aufwerten:** Vorhandene kleine Ability-/Rooster-/Arena-Icons in Statistik, Loadout-Zeilen und Unlocks nutzen; neue Freischaltungen mit einer kurzen, klaren Reveal-Animation statt nur Textchips inszenieren.
+- [x] **Eingebrannte Kartennamen entfernen:** Kartennamen stehen nicht mehr im Kampffeld. Wave 1 beginnt stattdessen mit einem kurzen HUD-Intro aus Arena, Challenge und Wellenname.
+- [x] **Kosmetik klar benennen:** Jeder Rooster besitzt Original plus eine freischaltbare Farbvariante. Das Menü kennzeichnet sie bereits explizit als „VISUAL ONLY“ und „No stat changes“.
+- [x] **Run-Report aufwerten:** Statistik, Loadout und Schadensquellen verwenden die vorhandenen Icons und Arena-/Rooster-Bilder. Neue Freischaltungen besitzen nun eine eigene Reward-Hierarchie, typgerechte Icons und eine kurze, gestaffelte Reveal-Animation mit Reduced-Motion-Fallback.
 
 ### P2 – sinnvoller Polish, kein Release-Blocker
 
 - [ ] **Loading Screen:** Der aktuelle 440-px-zentrierte Loader ist sauber, nutzt Desktop aber wenig. Vorschlag: auf großen Bildschirmen eine 640–760-px-Karte mit kleiner Key-Art-Fläche und separatem Fortschrittsbereich; kompakte Ansicht unverändert lassen.
 - [x] **Start-/Play-Menü:** Desktop nutzt nun bis zu 1.240 px symmetrisch, bleibt bei niedrigen Fenstern kompakt und zeigt Arena, Rooster sowie Start-Button ohne Scrollen. Mobile darf bei extrem kleinen Höhen weiter scrollen.
+- [x] **Stabiler Hub-Rahmen:** Play, Roosters, Training und Archive teilen auf Desktop dieselbe responsive Außenhöhe; nur ihr Inhalt wechselt beziehungsweise scrollt. Das verhindert das bisherige Springen des zentrierten Rahmens.
 - [ ] **Erster-Lauf-Hinweise:** Auto-Fire, Bewegung, zerstörbare Props und Pickup-Regeln in wenigen kontextuellen Hinweisen erklären, nicht als langes Tutorial.
 - [ ] **10-Seed-Soak:** Erst nach Abschluss der P1-Entscheidungen ausführen, damit die lange Matrix nicht nach UI-/Map-Änderungen erneut laufen muss.
 

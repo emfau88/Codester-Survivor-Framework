@@ -675,7 +675,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   onWaveStarted(wave, config) {
-    this.hud.showWaveBanner(wave, config);
+    if (wave === 1) {
+      this.hud.showArenaBanner(
+        this.arena.definition.name,
+        this.challenge.definition.name,
+        config
+      );
+    } else {
+      this.hud.showWaveBanner(wave, config);
+    }
     if (config.bossWave) {
       this.productAnalytics.trackBossReached(wave);
       this.audio.stopAmbience(350);

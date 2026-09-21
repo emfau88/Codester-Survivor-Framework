@@ -78,6 +78,36 @@ async function verifyViewport(browser, url, viewport) {
     }
     assert(hub.documentWidth <= viewport.width,
       `${viewport.name}: Hub creates horizontal document overflow.`, hub);
+    const hubViews = [];
+    for (const view of ['play', 'roosters', 'training', 'archive']) {
+      await page.locator(`[data-hub-tab="${view}"]`).click();
+      const geometry = await page.evaluate((activeView) => {
+        const panel = document.querySelector('.henhouse-panel');
+        const section = document.querySelector(`[data-hub-view="${activeView}"]`);
+        const rect = panel.getBoundingClientRect();
+        return {
+          view: activeView,
+          top: rect.top,
+          left: rect.left,
+          right: rect.right,
+          bottom: rect.bottom,
+          width: rect.width,
+          height: rect.height,
+          sectionClientHeight: section.clientHeight,
+          sectionScrollHeight: section.scrollHeight
+        };
+      }, view);
+      hubViews.push(geometry);
+    }
+    const heights = hubViews.map((view) => view.height);
+    const tops = hubViews.map((view) => view.top);
+    const leftOffsets = hubViews.map((view) => Math.abs(view.left - (viewport.width - view.right)));
+    assert(Math.max(...heights) - Math.min(...heights) <= 2
+      && Math.max(...tops) - Math.min(...tops) <= 2,
+    `${viewport.name}: switching hub tabs must not move or resize the outer frame.`, hubViews);
+    assert(leftOffsets.every((offset) => offset <= 2),
+      `${viewport.name}: every hub tab must stay horizontally centered.`, hubViews);
+    await page.locator('[data-hub-tab="play"]').click();
     await page.evaluate(() => window.__ROOSTER_TEST__.selectRooster('ace'));
     await page.waitForFunction(() => !window.__ROOSTER_TEST__.getState().choosingRooster);
     await page.evaluate(() => window.__ROOSTER_TEST__.openSettings());
@@ -118,7 +148,7 @@ async function verifyViewport(browser, url, viewport) {
     await page.evaluate(() => window.__ROOSTER_TEST__.resumeIfUpgradeOpen());
 
     assert(errors.length === 0, `${viewport.name}: browser errors while checking menus.`, errors);
-    return { name: viewport.name, hub, settings, upgrade };
+    return { name: viewport.name, hub, hubViews, settings, upgrade };
   } finally {
     await page.close();
   }
