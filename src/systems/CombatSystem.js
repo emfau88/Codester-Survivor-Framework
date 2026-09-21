@@ -4,7 +4,14 @@ import { getFireEggVisual } from '../data/fireEggVisuals.js';
 import { getCombatFeedbackProfile } from '../data/combatFeedbackProfiles.js';
 import { playEvolutionImpact } from './EvolutionVisuals.js';
 
-const TARGET_ACQUISITION_MARGIN = 0.5;
+export const DEFAULT_TARGET_ACQUISITION_MARGIN = 0.2;
+export const DESKTOP_TARGET_ACQUISITION_MARGIN = 0.15;
+
+export function getTargetAcquisitionMarginForViewport(width, height) {
+  return height > width
+    ? DEFAULT_TARGET_ACQUISITION_MARGIN
+    : DESKTOP_TARGET_ACQUISITION_MARGIN;
+}
 
 function getBossDamageMultiplier(enemy, source) {
   if (!enemy.boss) {
@@ -25,6 +32,9 @@ export class CombatSystem {
     this.primaryAttackSequence = 0;
     this.modifierVisuals = new Set();
     this.recentModifierImpacts = [];
+    this.aceTargetLockId = null;
+    this.lastAceLockAt = -Infinity;
+    this.aceRecoilTween = null;
   }
 
   autoShoot(time) {
@@ -33,7 +43,7 @@ export class CombatSystem {
       return;
     }
 
-    const target = this.findNearestEnemy();
+    const target = this.findPrimaryTarget();
     if (!target) {
       return;
     }
@@ -67,6 +77,7 @@ export class CombatSystem {
         && this.primaryAttackSequence % primary.deadeyeCadence === 0
       );
       const isAce = scene.player.roosterId === 'ace';
+      const isStorm = scene.player.roosterId === 'storm';
       const visualScale = evolution?.projectileScale
         ?? (primary.scale ?? 1)
           * (evolution?.scaleMultiplier ?? 1)
@@ -115,6 +126,7 @@ export class CombatSystem {
         spriteFlickerAlpha: evolution?.spriteFlickerAlpha
           ?? fireEggVisual?.spriteFlickerAlpha ?? primary.spriteFlickerAlpha ?? 0,
         criticalVisual: isAce && forceCritical,
+        stormContactVisual: isStorm && (primary.chainCount ?? 0) > 0,
         pierce: evolution ? Math.max(scene.player.projectilePierce, evolution.pierce ?? 0) : undefined,
         ricochet: evolution ? Math.max(scene.player.projectileRicochets, evolution.ricochet ?? 0) : undefined,
         splashRadius: (primary.splashRadius ?? 0) * (evolution?.splashRadiusMultiplier ?? 1),
@@ -139,6 +151,9 @@ export class CombatSystem {
         scene.showShotFeedback(angle, shot.laneOffset);
       }
     });
+    if (scene.player.roosterId === 'ace') {
+      this.showAceTargetLock(target, baseAngle);
+    }
     scene.lastShotAt = time;
     scene.audio.play(`egg-launch-${scene.player.roosterId}`);
     scene.debugStats.shots += pattern.length;
@@ -182,11 +197,113 @@ export class CombatSystem {
     if (!sorted.length) {
       return Array(count).fill(fallbackTarget);
     }
-    const targets = [];
-    for (let index = 0; index < count; index += 1) {
-      targets.push(sorted[index] ?? fallbackTarget);
+    // The primary target expresses each rooster's identity. Extra lanes may
+    // still spread to nearby enemies, but the first shot must not overwrite
+    // Ace's lock, Boombardier's cluster choice, or Stormcrest's chain anchor.
+    const alternates = sorted.filter((enemy) => enemy !== fallbackTarget);
+    return Array.from({ length: count }, (_, index) => (
+      index === 0 ? fallbackTarget : alternates[index - 1] ?? fallbackTarget
+    ));
+  }
+
+  findPrimaryTarget() {
+    const roosterId = this.scene.player.roosterId;
+    if (roosterId === 'artillery') return this.findBestSplashTarget();
+    if (roosterId === 'storm') return this.findStormChainAnchor();
+    if (roosterId === 'ace') return this.findAceLockedTarget();
+    return this.findNearestEnemy();
+  }
+
+  findBestSplashTarget() {
+    const candidates = this.getTargetableEnemies();
+    const radius = this.scene.player.primaryAttack?.splashRadius ?? 0;
+    if (!candidates.length || radius <= 0) return this.findNearestEnemy();
+    return candidates.map((candidate) => ({
+      candidate,
+      hits: candidates.filter((other) => Phaser.Math.Distance.Between(
+        candidate.sprite.x,
+        candidate.sprite.y,
+        other.sprite.x,
+        other.sprite.y
+      ) <= radius).length,
+      distance: Phaser.Math.Distance.Squared(
+        this.scene.player.sprite.x,
+        this.scene.player.sprite.y,
+        candidate.sprite.x,
+        candidate.sprite.y
+      )
+    })).sort((left, right) => right.hits - left.hits || left.distance - right.distance)[0]?.candidate ?? null;
+  }
+
+  findStormChainAnchor() {
+    const candidates = this.getTargetableEnemies();
+    const radius = this.scene.player.primaryAttack?.chainRadius ?? 0;
+    if (!candidates.length || radius <= 0) return this.findNearestEnemy();
+    return candidates.map((candidate) => ({
+      candidate,
+      links: candidates.filter((other) => other !== candidate && Phaser.Math.Distance.Between(
+        candidate.sprite.x,
+        candidate.sprite.y,
+        other.sprite.x,
+        other.sprite.y
+      ) <= radius).length,
+      distance: Phaser.Math.Distance.Squared(
+        this.scene.player.sprite.x,
+        this.scene.player.sprite.y,
+        candidate.sprite.x,
+        candidate.sprite.y
+      )
+    })).sort((left, right) => right.links - left.links || left.distance - right.distance)[0]?.candidate ?? null;
+  }
+
+  findAceLockedTarget() {
+    const nearest = this.findNearestEnemy();
+    const locked = this.scene.enemies.find((enemy) => enemy.id === this.aceTargetLockId
+      && this.isEnemyTargetable(enemy));
+    if (!locked || !nearest) {
+      this.aceTargetLockId = nearest?.id ?? null;
+      return nearest;
     }
-    return targets;
+    const player = this.scene.player.sprite;
+    const lockedDistance = Phaser.Math.Distance.Squared(player.x, player.y, locked.sprite.x, locked.sprite.y);
+    const nearestDistance = Phaser.Math.Distance.Squared(player.x, player.y, nearest.sprite.x, nearest.sprite.y);
+    const target = lockedDistance <= nearestDistance * 1.35 ? locked : nearest;
+    this.aceTargetLockId = target.id;
+    return target;
+  }
+
+  showAceTargetLock(target, angle) {
+    const { scene } = this;
+    // Visual feedback only: neither sprite position nor body velocity changes.
+    const sprite = scene.player.sprite;
+    const baseScale = scene.player.baseScale ?? sprite.scaleX;
+    // This must not cancel the player's damage-flash tween, which also targets
+    // the sprite's alpha. Only replace the previous Ace recoil tween.
+    this.aceRecoilTween?.stop();
+    sprite.setScale(baseScale * 1.035).setAngle(Phaser.Math.RadToDeg(angle) * 0.012);
+    this.aceRecoilTween = scene.tweens.add({
+      targets: sprite,
+      scaleX: baseScale,
+      scaleY: baseScale,
+      angle: 0,
+      duration: 85,
+      ease: 'Quad.Out',
+      onComplete: () => {
+        this.aceRecoilTween = null;
+      }
+    });
+    if (scene.time.now - this.lastAceLockAt < 180) return;
+    this.lastAceLockAt = scene.time.now;
+    const marker = scene.add.circle(target.sprite.x, target.sprite.y, 26, 0xffd35c, 0.06)
+      .setStrokeStyle(2, 0xfff3b0, 0.78)
+      .setDepth(14);
+    scene.tweens.add({
+      targets: marker,
+      alpha: 0,
+      scale: 1.3,
+      duration: 160,
+      onComplete: () => marker.destroy()
+    });
   }
 
   findNearestEnemy() {
@@ -208,8 +325,9 @@ export class CombatSystem {
 
   getTargetAcquisitionBounds() {
     const view = this.scene.cameras.main.worldView;
-    const marginX = view.width * TARGET_ACQUISITION_MARGIN;
-    const marginY = view.height * TARGET_ACQUISITION_MARGIN;
+    const marginScreens = this.scene.targetAcquisitionMargin ?? DEFAULT_TARGET_ACQUISITION_MARGIN;
+    const marginX = view.width * marginScreens;
+    const marginY = view.height * marginScreens;
     return {
       x: view.x - marginX,
       y: view.y - marginY,
@@ -219,7 +337,7 @@ export class CombatSystem {
       visibleY: view.y,
       visibleWidth: view.width,
       visibleHeight: view.height,
-      marginScreens: TARGET_ACQUISITION_MARGIN
+      marginScreens
     };
   }
 
@@ -386,6 +504,9 @@ export class CombatSystem {
 
   applyPrimaryImpact(projectile, hitEnemy, damage, x, y) {
     this.showGoldenEggImpact(projectile, x, y);
+    if (projectile.stormContactVisual) {
+      this.showStormFirstContact(x, y, projectile.chainRemaining);
+    }
     if (projectile.splashRadius > 0 && projectile.splashDamageRatio > 0) {
       const splashDamage = Math.max(1, Math.round(damage * projectile.splashDamageRatio));
       if (projectile.impactStyle?.startsWith('blast-shell')) {
@@ -573,6 +694,20 @@ export class CombatSystem {
       remaining -= 1;
     }
     projectile.chainRemaining = remaining;
+  }
+
+  showStormFirstContact(x, y, chainCount) {
+    const contact = this.scene.add.circle(x, y, 18 + chainCount * 3, 0x9ff7ff, 0.12)
+      .setStrokeStyle(2.5, 0xffffff, 0.88)
+      .setDepth(11);
+    this.scene.tweens.add({
+      targets: contact,
+      alpha: 0,
+      scale: 1.75,
+      duration: 145,
+      ease: 'Quad.Out',
+      onComplete: () => contact.destroy()
+    });
   }
 
   showBlastShellImpact(projectile, x, y, radius, { secondary = false } = {}) {

@@ -8,16 +8,54 @@ import {
 } from './helpers/test-runtime.mjs';
 
 const artifactDir = path.join(projectRoot, 'test-results');
-const scenarios = [
-  { id: 'ace-desktop-a', rooster: 'ace', seed: 'early-ace-a', viewport: { width: 960, height: 540 } },
-  { id: 'ace-portrait-b', rooster: 'ace', seed: 'early-ace-b', viewport: { width: 390, height: 844 } },
-  { id: 'artillery-desktop-a', rooster: 'artillery', seed: 'early-artillery-a', viewport: { width: 960, height: 540 } },
-  { id: 'artillery-portrait-b', rooster: 'artillery', seed: 'early-artillery-b', viewport: { width: 390, height: 844 } },
-  { id: 'storm-portrait-guard', rooster: 'storm', seed: 'early-storm-guard', viewport: { width: 390, height: 844 } }
+const seedCount = Math.max(1, Math.floor(Number(process.env.EARLY_PACING_SEEDS ?? 5)));
+const concurrency = Math.max(1, Math.floor(Number(process.env.EARLY_PACING_CONCURRENCY ?? 1)));
+const roosters = ['ace', 'artillery', 'storm'];
+const viewports = [
+  { id: 'desktop', width: 960, height: 540 },
+  { id: 'portrait', width: 390, height: 844 }
 ];
+const scenarios = roosters.flatMap((rooster) => viewports.flatMap((viewport) => (
+  Array.from({ length: seedCount }, (_, index) => ({
+    id: `${rooster}-${viewport.id}-${index + 1}`,
+    rooster,
+    seed: `early-${rooster}-${viewport.id}-${index + 1}`,
+    viewport: { width: viewport.width, height: viewport.height }
+  }))
+)));
+const FIRST_PICK_WINDOW_MS = [25000, 35000];
 
 function assert(condition, message, details) {
   if (!condition) throw new Error(`${message}\n${JSON.stringify(details ?? {}, null, 2)}`);
+}
+
+function percentile(values, ratio) {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * ratio))] ?? null;
+}
+
+function summarize(results) {
+  return Object.values(results.reduce((groups, result) => {
+    const key = `${result.rooster}/${result.id.split('-')[1]}`;
+    const group = groups[key] ?? { rooster: result.rooster, viewport: result.id.split('-')[1], results: [] };
+    group.results.push(result);
+    groups[key] = group;
+    return groups;
+  }, {})).map((group) => {
+    const values = group.results.map((result) => result.firstUpgradeAtMs);
+    return {
+      rooster: group.rooster,
+      viewport: group.viewport,
+      samples: values.length,
+      minMs: Math.min(...values),
+      medianMs: percentile(values, 0.5),
+      p90Ms: percentile(values, 0.9),
+      maxMs: Math.max(...values),
+      outsideProductionWindow: group.results.filter((result) => (
+        result.firstUpgradeAtMs < FIRST_PICK_WINDOW_MS[0] || result.firstUpgradeAtMs > FIRST_PICK_WINDOW_MS[1]
+      )).map((result) => result.id)
+    };
+  });
 }
 
 async function runScenario(browser, serverUrl, scenario) {
@@ -45,10 +83,22 @@ async function runScenario(browser, serverUrl, scenario) {
       api.selectRooster(rooster);
       api.enableBot('average');
     }, scenario.rooster);
-    await page.waitForFunction(() => (
-      Number.isFinite(window.__ROOSTER_TEST__?.getTelemetry().progression.firstUpgradeAtMs)
-      || window.__ROOSTER_TEST__?.getState().gameEnded
-    ), null, { timeout: 50000 });
+    try {
+      await page.waitForFunction(() => (
+        Number.isFinite(window.__ROOSTER_TEST__?.getTelemetry().progression.firstUpgradeAtMs)
+        || window.__ROOSTER_TEST__?.getState().gameEnded
+      ), null, { timeout: 50000 });
+    } catch (error) {
+      const diagnostic = await page.evaluate(() => {
+        const api = window.__ROOSTER_TEST__;
+        return { state: api?.getState?.() ?? null, telemetry: api?.getTelemetry?.() ?? null };
+      });
+      throw new Error(`${scenario.id} timed out waiting for its first upgrade.\n${JSON.stringify({
+        scenario,
+        errors,
+        diagnostic
+      }, null, 2)}\n${error.message}`);
+    }
     const result = await page.evaluate(() => {
       const api = window.__ROOSTER_TEST__;
       const state = api.getState();
@@ -63,10 +113,10 @@ async function runScenario(browser, serverUrl, scenario) {
     });
     assert(Number.isFinite(result.firstUpgradeAtMs),
       `${scenario.id} did not reach its first upgrade.`, result);
-    assert(result.wave === 1, `${scenario.id} reached the first upgrade after wave one.`, result);
-    assert(Math.abs(result.waveOne.allocatedXp - 90) < 0.001
+    assert(result.wave <= 2, `${scenario.id} reached the first upgrade after wave two.`, result);
+    assert(Math.abs(result.waveOne.allocatedXp - 40) < 0.001
       && JSON.stringify(result.waveOne.xpCurve.segmentShares) === JSON.stringify([0.4, 0.34, 0.1, 0.16]),
-    `${scenario.id} changed the wave-one XP total or lost the frontload curve.`, result.waveOne);
+    `${scenario.id} changed the wave-one XP pacing budget or lost the frontload curve.`, result.waveOne);
     assert(errors.length === 0, `${scenario.id} reported browser errors.`, errors);
     return { ...scenario, ...result };
   } finally {
@@ -81,23 +131,33 @@ async function run() {
   const browser = await chromium.launch({ headless: true });
   try {
     const results = [];
-    for (let index = 0; index < scenarios.length; index += 2) {
+    for (let index = 0; index < scenarios.length; index += concurrency) {
       results.push(...await Promise.all(
-        scenarios.slice(index, index + 2).map((scenario) => runScenario(browser, serverState.url, scenario))
+        scenarios.slice(index, index + concurrency).map((scenario) => runScenario(browser, serverState.url, scenario))
       ));
     }
-    const report = { generatedAt: new Date().toISOString(), results };
+    const groups = summarize(results);
+    const report = {
+      generatedAt: new Date().toISOString(),
+      seedCount,
+      concurrency,
+      productionWindowMs: FIRST_PICK_WINDOW_MS,
+      groups,
+      results
+    };
     await fs.writeFile(path.join(artifactDir, 'early-pacing-report.json'), JSON.stringify(report, null, 2));
     results.forEach((result) => {
-      assert(result.firstUpgradeAtMs >= 15000 && result.firstUpgradeAtMs <= 32000,
-        `${result.id} first upgrade is outside the 15-32 second production window.`, result);
+      assert(result.firstUpgradeAtMs >= FIRST_PICK_WINDOW_MS[0]
+        && result.firstUpgradeAtMs <= FIRST_PICK_WINDOW_MS[1],
+      `${result.id} first upgrade is outside the 25-35 second pacing window.`, result);
     });
     console.log('Rooster early-upgrade pacing gate passed.');
-    console.log(JSON.stringify(results.map((result) => ({
-      id: result.id,
-      firstUpgradeSeconds: Number((result.firstUpgradeAtMs / 1000).toFixed(1)),
-      kills: result.kills,
-      xpCollected: Number(result.xpCollected.toFixed(1))
+    console.log(JSON.stringify(groups.map((group) => ({
+      ...group,
+      minSeconds: Number((group.minMs / 1000).toFixed(1)),
+      medianSeconds: Number((group.medianMs / 1000).toFixed(1)),
+      p90Seconds: Number((group.p90Ms / 1000).toFixed(1)),
+      maxSeconds: Number((group.maxMs / 1000).toFixed(1))
     })), null, 2));
   } finally {
     await browser.close();

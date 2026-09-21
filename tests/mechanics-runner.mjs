@@ -462,7 +462,7 @@ async function testWaveCuration(browser) {
     });
     const catalog = await page.evaluate(() => window.__ROOSTER_TEST__.getWaveCatalog());
     const expectedTypes = [
-      { slime: 30, kornkrabbler: 18 },
+      { slime: 15, kornkrabbler: 9 },
       { slime: 26, kornkrabbler: 24, runner: 12 },
       { slime: 24, kornkrabbler: 32, runner: 17, brute: 4, 'elite-runner': 1 },
       { slime: 36, kornkrabbler: 37, runner: 14, spitter: 5 },
@@ -473,7 +473,7 @@ async function testWaveCuration(browser) {
       { slime: 77, kornkrabbler: 98, brute: 20, 'fan-spitter': 6, support: 6, summoner: 2, 'elite-brute': 1 },
       { boss: 1 }
     ];
-    const expectedXpBudgets = [90, 114, 138, 165, 195, 228, 340, 384, 448, 0];
+    const expectedXpBudgets = [40, 164, 138, 165, 195, 228, 340, 384, 448, 0];
     assert(catalog.length === 10, 'Wave catalog should contain exactly ten waves.', catalog);
     catalog.forEach((wave, index) => {
       assert(wave.queue.length === wave.count, `Wave ${wave.wave} queue length does not match its budget.`, wave);
@@ -672,8 +672,21 @@ async function testEnemyAbilities(browser) {
     await page.waitForTimeout(70);
     await page.evaluate(() => {
       window.__ROOSTER_TEST__.clearEnemies();
+      window.__ROOSTER_TEST__.spawnEnemyType('slime', 860, 420, { speed: 0, damage: 0, hp: 999 });
       window.__ROOSTER_TEST__.spawnEnemyType('slime', 900, 450, { speed: 0, damage: 0, hp: 999 });
+      window.__ROOSTER_TEST__.spawnEnemyType('slime', 940, 480, { speed: 0, damage: 0, hp: 999 });
     });
+    await page.waitForTimeout(70);
+    const slimeHop = await page.evaluate(() => window.__ROOSTER_TEST__.getEnemySnapshot());
+    assert(slimeHop.length === 3
+      && slimeHop.every((enemy) => enemy.texture === 'enemy-slime-hop-v2'
+        && enemy.animation === 'enemy-slime-hop-loop'
+        && enemy.animationFrameCount === 8
+        && enemy.animationFrameRate === 7
+        && enemy.animationYoyo === false),
+    'Slimes did not use the corrected eight-frame hop timing.', slimeHop);
+    assert(new Set(slimeHop.map((enemy) => enemy.animationFrame)).size > 1,
+      'Slime hop phases were synchronized instead of staggered.', slimeHop);
     await page.waitForTimeout(360);
     const afterRecycledFan = await page.evaluate(() => window.__ROOSTER_TEST__.getState());
     assert(
@@ -917,11 +930,12 @@ async function inspectTargetAcquisitionGate(browser, label, viewport) {
       };
     });
     const { baseState, initial, insideId, outsideIds, mixed, molotovTarget, outsideOnly } = result;
-    assert(initial.bounds.width > initial.bounds.visibleWidth * 1.99
-      && initial.bounds.width < initial.bounds.visibleWidth * 2.01
-      && initial.bounds.height > initial.bounds.visibleHeight * 1.99
-      && initial.bounds.height < initial.bounds.visibleHeight * 2.01,
-    `${label}: acquisition rectangle is not exactly camera view plus a half-screen margin per side.`, result);
+    const expectedMarginScreens = viewport.height > viewport.width ? 0.2 : 0.15;
+    const expectedScale = 1 + expectedMarginScreens * 2;
+    assert(Math.abs(initial.bounds.marginScreens - expectedMarginScreens) < 0.001
+      && Math.abs(initial.bounds.width - initial.bounds.visibleWidth * expectedScale) < 2
+      && Math.abs(initial.bounds.height - initial.bounds.visibleHeight * expectedScale) < 2,
+    `${label}: acquisition rectangle does not use the selected viewport-specific target margin.`, result);
     assert(Math.abs(initial.bounds.visibleWidth - baseState.viewport.width / baseState.cameraZoom) < 2
       && Math.abs(initial.bounds.visibleHeight - baseState.viewport.height / baseState.cameraZoom) < 2,
     `${label}: acquisition rectangle does not follow the logical camera viewport.`, result);

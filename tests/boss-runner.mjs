@@ -64,6 +64,8 @@ async function run() {
     const ttk = state.telemetry.ttkByEnemyType.boss?.averageMs ?? null;
     assert(errors.length === 0, 'Browser reported errors in boss scenario.', errors);
     assert(state.telemetry.outcome === 'victory', 'Representative build did not defeat the boss.', state.telemetry);
+    assert(state.telemetry.waves.find((wave) => wave.wave === 10)?.outcome === 'completed',
+      'Boss victory did not mark Wave 10 as completed in telemetry.', state.telemetry.waves);
     assert(ttk !== null && ttk >= 55000 && ttk <= 75000, 'Boss TTK is outside 55-75 seconds.', {
       ttk,
       summary: state.telemetry

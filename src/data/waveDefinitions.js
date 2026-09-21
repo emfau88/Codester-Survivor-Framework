@@ -19,21 +19,39 @@ export const WAVE_DEFINITIONS = [
   {
     name: 'First Peck',
     intent: 'Fodder only: learn movement and auto-aim as the flock thickens',
-    count: 48,
+    count: 24,
     interval: 500,
     targetDuration: [22, 28],
-    targetPeak: 28,
-    activeCap: 30,
-    mobileActiveCap: 26,
-    spawnMinDistance: 300,
+    // Let the controlled adaptive advances consume the upper end of the
+    // player-facing window rather than shortening the Wave below 22 seconds.
+    directorTargetDurationMs: 28200,
+    targetPeak: 18,
+    activeCap: 20,
+    mobileActiveCap: 18,
+    // The camera-rim fallback must remain viable on portrait while the player
+    // is close to an edge; 220 keeps the first foe outside the personal zone.
+    spawnMinDistance: 220,
+    // The player bot begins by drifting up-left. Lead with that movement so
+    // the first threat crosses into view instead of trailing behind it.
+    spawnPlayerLeading: true,
+    spawnEdgePreference: 'nearest-safe',
+    // Escalation consists of single pulses; stage them at the inner rim so a
+    // portrait player never clears one before the next pulse becomes visible.
+    spawnPulseApproachDistance: 96,
+    spawnTargetBuffer: 2,
     primaryRoles: [],
-    pressureCurve: pressureCurve({ opening: 2, pressure: 3, finale: 4 }),
-    // Preserve the 90 XP total while making the first upgrade land during
-    // the escalation segment across all rooster profiles.
-    xpCurve: xpCurve(90, 0, [0.4, 0.34, 0.1, 0.16]),
+    pressureCurve: [
+      { id: 'build', share: 0.25, durationShare: 0.25, batch: 1, pattern: 'scatter', pauseAfter: 300 },
+      { id: 'escalate', share: 0.35, durationShare: 0.3, batch: 1, pattern: 'pulse', pauseAfter: 420 },
+      { id: 'recover', share: 0.15, durationShare: 0.18, batch: 1, pattern: 'scatter', pauseAfter: 480 },
+      { id: 'finale', share: 0.25, durationShare: 0.27, batch: 1, pattern: 'surround', pauseAfter: 0 }
+    ],
+    // Wave 1 teaches movement without an immediate upgrade. Its deferred XP
+    // moves to Wave 2, preserving the combined opening budget.
+    xpCurve: xpCurve(40, 0, [0.4, 0.34, 0.1, 0.16]),
     composition: [
-      { count: 30, enemy: { kind: 'slime' } },
-      { count: 18, enemy: { kind: 'kornkrabbler' } }
+      { count: 15, enemy: { kind: 'slime' } },
+      { count: 9, enemy: { kind: 'kornkrabbler' } }
     ]
   },
   {
@@ -48,7 +66,9 @@ export const WAVE_DEFINITIONS = [
     spawnMinDistance: 295,
     primaryRoles: ['runner'],
     pressureCurve: pressureCurve({ opening: 2, pressure: 4, finale: 6, finalePattern: 'rusher-line' }),
-    xpCurve: xpCurve(114),
+    // Recover the deferred opening XP early in Wave 2 so slow profiles and
+    // portrait movement reach the first decision before the 32-second cap.
+    xpCurve: xpCurve(164, 0, [0.28, 0.34, 0.14, 0.24]),
     composition: [
       { count: 26, enemy: { kind: 'slime' } },
       { count: 24, enemy: { kind: 'kornkrabbler' } },

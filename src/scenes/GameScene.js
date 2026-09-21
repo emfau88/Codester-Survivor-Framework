@@ -10,7 +10,7 @@ import {
 import { AudioSystem } from '../systems/AudioSystem.js';
 import { ArenaSystem } from '../systems/ArenaSystem.js';
 import { CollisionSystem } from '../systems/CollisionSystem.js';
-import { CombatSystem } from '../systems/CombatSystem.js';
+import { CombatSystem, getTargetAcquisitionMarginForViewport } from '../systems/CombatSystem.js';
 import { CombatFeedbackSystem } from '../systems/CombatFeedbackSystem.js';
 import { ChallengeSystem } from '../systems/ChallengeSystem.js';
 import { EnemyAttackSystem } from '../systems/EnemyAttackSystem.js';
@@ -68,6 +68,15 @@ export class GameScene extends Phaser.Scene {
     const requestedSeed = searchParams.get('seed');
     const requestedProfile = searchParams.get('profile') ?? 'manual';
     const requestedArena = searchParams.get('arena') ?? 'open-yard';
+    const targetMarginParameter = searchParams.get('targetMargin');
+    const requestedTargetMargin = targetMarginParameter === null
+      ? null
+      : Number(targetMarginParameter);
+    this.adaptiveSpawnsEnabled = !import.meta.env.DEV || searchParams.get('adaptiveSpawns') !== '0';
+    const viewport = getSceneViewport(this);
+    this.targetAcquisitionMargin = import.meta.env.DEV && Number.isFinite(requestedTargetMargin)
+      ? Phaser.Math.Clamp(requestedTargetMargin, 0, 0.5)
+      : getTargetAcquisitionMarginForViewport(viewport.width, viewport.height);
     const generatedSeed = globalThis.crypto?.getRandomValues
       ? globalThis.crypto.getRandomValues(new Uint32Array(1))[0]
       : Date.now();
@@ -133,6 +142,8 @@ export class GameScene extends Phaser.Scene {
     this.elapsed = 0;
     this.telemetry = new Telemetry({ seed: this.rng.seed, profile: requestedProfile });
     this.telemetry.summary.challengeId = this.challenge.id;
+    this.telemetry.summary.targetAcquisitionMargin = this.targetAcquisitionMargin;
+    this.telemetry.summary.adaptiveSpawnsEnabled = this.adaptiveSpawnsEnabled;
     this.productAnalytics = new ProductAnalyticsSystem();
     this.effects = new EffectSettingsSystem();
     this.audio = new AudioSystem(this);
@@ -774,6 +785,15 @@ export class GameScene extends Phaser.Scene {
 
   getTelemetrySample() {
     const nearestEnemy = this.findNearestEnemy();
+    const view = this.cameras.main.worldView;
+    const visibleEnemies = this.enemies.filter((enemy) => (
+      enemy.sprite.active
+      && enemy.sprite.x >= view.x
+      && enemy.sprite.x <= view.x + view.width
+      && enemy.sprite.y >= view.y
+      && enemy.sprite.y <= view.y + view.height
+    ));
+    const targetableEnemies = this.getTargetableEnemies();
     const nearestEnemyDistance = nearestEnemy
       ? Phaser.Math.Distance.Between(this.player.sprite.x, this.player.sprite.y, nearestEnemy.sprite.x, nearestEnemy.sprite.y)
       : Infinity;
@@ -799,6 +819,9 @@ export class GameScene extends Phaser.Scene {
     return {
       wave: this.waveSystem.currentWave,
       enemiesAlive: this.enemies.length,
+      visibleEnemies: visibleEnemies.length,
+      visibleEnemyIds: visibleEnemies.map((enemy) => enemy.id),
+      targetableEnemies: targetableEnemies.length,
       microFodderAlive: this.enemies.filter((enemy) => enemy.microFodder).length,
       specialEnemiesAlive: this.enemies.filter((enemy) => (
         !enemy.microFodder && enemy.role !== 'fodder'
@@ -812,6 +835,7 @@ export class GameScene extends Phaser.Scene {
       playerY: this.player.sprite.y,
       hpRatio: this.player.hp / this.player.maxHp,
       nearestEnemyDistance,
+      spawnDirector: this.waveSystem.director.getState(),
       objects,
       poolStats
     };

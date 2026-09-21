@@ -54,6 +54,7 @@ export class Projectile {
     this.visualRank = options.visualRank ?? 0;
     this.fireVisualRank = options.fireVisualRank ?? 0;
     this.criticalVisual = options.criticalVisual ?? false;
+    this.stormContactVisual = options.stormContactVisual ?? false;
     this.spritePulseX = options.spritePulseX ?? 0;
     this.spritePulseY = options.spritePulseY ?? 0;
     this.spritePulseMs = options.spritePulseMs ?? 260;

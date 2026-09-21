@@ -151,6 +151,7 @@ export class PickupSystem {
             wave: scene.waveSystem.currentWave
           });
           pickup.destroy();
+          scene.waveSystem.completeFinalWave();
           scene.victory();
           return;
         }

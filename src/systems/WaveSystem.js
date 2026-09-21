@@ -118,9 +118,7 @@ export class WaveSystem {
     if (this.waitingForClear && this.scene.enemies.length === 0) {
       if (this.currentWave >= this.waves.length) {
         if (this.scene.pickups?.hasPendingRoyalReward()) return;
-        this.completed = true;
-        this.active = false;
-        this.scene.onWaveCompleted?.(this.currentWave);
+        this.completeFinalWave();
         this.scene.victory();
         return;
       }
@@ -142,6 +140,16 @@ export class WaveSystem {
 
   resetCleanupWatch() {
     this.cleanupCandidateSince = null;
+  }
+
+  completeFinalWave() {
+    if (this.completed || this.currentWave !== this.totalWaves) {
+      return false;
+    }
+    this.completed = true;
+    this.active = false;
+    this.scene.onWaveCompleted?.(this.currentWave);
+    return true;
   }
 
   getCleanupState() {
