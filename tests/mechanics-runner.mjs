@@ -486,8 +486,10 @@ async function testWaveCuration(browser) {
     });
     assert(JSON.stringify(catalog[0].xpCurve.segmentShares) === JSON.stringify([0.4, 0.34, 0.1, 0.16]),
       'Wave one does not use the approved XP-only frontload curve.', catalog[0].xpCurve);
-    assert(catalog.slice(1).every((wave) => wave.xpCurve.segmentShares === null),
-      'XP frontloading leaked into a later wave.', catalog.map((wave) => wave.xpCurve));
+    assert(JSON.stringify(catalog[1].xpCurve.segmentShares) === JSON.stringify([0.28, 0.34, 0.14, 0.24]),
+      'Wave two does not receive the deferred opening XP curve.', catalog[1].xpCurve);
+    assert(catalog.slice(2).every((wave) => wave.xpCurve.segmentShares === null),
+      'XP frontloading leaked beyond the opening waves.', catalog.map((wave) => wave.xpCurve));
     assert(catalog[9].bossWave && catalog[9].queue[0] === 'boss', 'Wave 10 must be the boss finale.', catalog[9]);
 
     const microDirections = {};

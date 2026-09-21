@@ -68,7 +68,8 @@ export function createGameAnimations(scene) {
   });
 
   const enemyAnimations = [
-    ['enemy-slime-wobble-loop', 'enemy-slime-wobble', 0, 2, 7]
+    ['enemy-slime-wobble-loop', 'enemy-slime-wobble', 0, 2, 7, true],
+    ['enemy-slime-hop-loop', 'enemy-slime-hop-v2', 0, 7, 7, false]
   ];
   const stateDrivenEnemies = [
     ['enemy-brute', 'enemy-brute-stomp', 6],
@@ -141,7 +142,7 @@ export function createGameAnimations(scene) {
     });
   });
 
-  enemyAnimations.forEach(([key, texture, start, end, frameRate]) => {
+  enemyAnimations.forEach(([key, texture, start, end, frameRate, yoyo]) => {
     if (scene.anims.exists(key)) {
       return;
     }
@@ -150,7 +151,7 @@ export function createGameAnimations(scene) {
       frames: scene.anims.generateFrameNumbers(texture, { start, end }),
       frameRate,
       repeat: -1,
-      yoyo: true
+      yoyo
     });
   });
   stateDrivenEnemies.forEach(([prefix, texture, frameRate]) => {

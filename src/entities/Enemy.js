@@ -106,6 +106,10 @@ export class Enemy {
     } else if (config.animation) {
       this.sprite.play(config.animation);
     }
+    if (config.animationPhaseFrames > 1 && this.sprite.anims.isPlaying) {
+      const phaseFrame = this.id % config.animationPhaseFrames;
+      this.sprite.anims.setProgress(phaseFrame / (config.animationPhaseFrames - 1));
+    }
     if (this.explodeOnDeath) {
       this.warning = scene.add.circle(x, y, this.explosionRadius || 42, 0xff7a33, 0.08)
         .setStrokeStyle(3, 0xffb347, 0.7)

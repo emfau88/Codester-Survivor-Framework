@@ -1,6 +1,7 @@
 import { ROOSTER_ASSET_URLS } from '@rooster-assets';
 import enemySlimeUrl from '../../assets/enemy-slime.webp';
 import enemySlimeWobbleUrl from '../../assets/enemies/animations/enemy-slime-wobble.webp';
+import enemySlimeHopUrl from '../../assets/enemies/animations/enemy-slime-hop-v2.webp';
 import enemyKornkrabblerRunUrl from '../../assets/enemies/animations/enemy-kornkrabbler-run.webp';
 import enemyRunnerRunUrl from '../../assets/enemies/animations/enemy-runner-run.webp';
 import enemyEliteRunnerRunUrl from '../../assets/enemies/animations/enemy-elite-runner-run.webp';
@@ -160,6 +161,7 @@ export function preloadGameAssets(scene) {
   });
   scene.load.image('enemy-slime', enemySlimeUrl);
   scene.load.spritesheet('enemy-slime-wobble', enemySlimeWobbleUrl, { frameWidth: 256, frameHeight: 256 });
+  scene.load.spritesheet('enemy-slime-hop-v2', enemySlimeHopUrl, { frameWidth: 256, frameHeight: 256 });
   scene.load.spritesheet('enemy-kornkrabbler-run', enemyKornkrabblerRunUrl, { frameWidth: 256, frameHeight: 256 });
   scene.load.spritesheet('enemy-runner-run', enemyRunnerRunUrl, { frameWidth: 256, frameHeight: 256 });
   scene.load.spritesheet('enemy-elite-runner-run', enemyEliteRunnerRunUrl, { frameWidth: 256, frameHeight: 256 });

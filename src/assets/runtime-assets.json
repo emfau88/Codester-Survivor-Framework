@@ -733,6 +733,15 @@
       "bytes": 21126
     },
     {
+      "source": "art-source/enemies/animations/enemy-slime-hop-v2.png",
+      "sourceSha256": "e32e81f0d0874ba0ff6cae052884e7e0a9b1e180feb1b952feea66a4dbd00d3a",
+      "runtime": "src/assets/enemies/animations/enemy-slime-hop-v2.webp",
+      "runtimeSha256": "ddd4058970b1a4bf069e6afc3e492b3496e37fec3b5dac5705189cb738dc9ba9",
+      "width": 2048,
+      "height": 256,
+      "bytes": 151980
+    },
+    {
       "source": "art-source/enemies/animations/enemy-kornkrabbler-run.png",
       "sourceSha256": "c7db332eacea0f2169dfc8bc0fd74b4808fceda1c19d1d24c4c3f3f9da5d008c",
       "runtime": "src/assets/enemies/animations/enemy-kornkrabbler-run.webp",
