@@ -1,6 +1,17 @@
 import Phaser from 'phaser';
 
 const PROJECTILE_SIZE = { 1: 28, 2: 32, 3: 36, 4: 40 };
+const FLIGHT_DURATION_MS = Object.freeze({
+  1: 760,
+  2: 720,
+  3: 680,
+  4: 640,
+  evolved: 600
+});
+
+export function getMolotovFlightDuration(rank, evolved = false) {
+  return evolved ? FLIGHT_DURATION_MS.evolved : (FLIGHT_DURATION_MS[rank] ?? FLIGHT_DURATION_MS[1]);
+}
 
 export class MolotovEggProjectile {
   constructor(scene, startX, startY, targetX, targetY, rank, evolved = false) {
@@ -9,7 +20,7 @@ export class MolotovEggProjectile {
     this.target = new Phaser.Math.Vector2(targetX, targetY);
     this.rank = rank;
     this.evolved = evolved;
-    this.duration = evolved ? 440 : Math.max(470, 690 - rank * 55);
+    this.duration = getMolotovFlightDuration(rank, evolved);
     this.age = 0;
     this.active = true;
     this.textureKey = evolved ? 'molotov-egg-evo' : `molotov-egg-r${rank}`;
@@ -33,10 +44,11 @@ export class MolotovEggProjectile {
     if (!this.active) return;
     this.age += delta;
     const progress = Phaser.Math.Clamp(this.age / this.duration, 0, 1);
-    const eased = Phaser.Math.Easing.Sine.InOut(progress);
-    const x = Phaser.Math.Linear(this.start.x, this.target.x, eased);
-    const groundY = Phaser.Math.Linear(this.start.y, this.target.y, eased);
-    const arc = Math.sin(progress * Math.PI) * (84 + this.rank * 14);
+    // A ballistic throw has a constant horizontal component and a quadratic
+    // vertical arc. It reads as a real lob without changing the fixed impact.
+    const x = Phaser.Math.Linear(this.start.x, this.target.x, progress);
+    const groundY = Phaser.Math.Linear(this.start.y, this.target.y, progress);
+    const arc = 4 * progress * (1 - progress) * (94 + this.rank * 13);
     const y = groundY - arc;
     const travelAngle = Phaser.Math.Angle.Between(
       this.previousPosition.x,

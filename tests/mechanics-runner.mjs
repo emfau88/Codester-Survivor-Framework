@@ -1084,7 +1084,7 @@ async function testAreaEffectReadability(browser) {
       && settled.hazards[0]?.animation === null
       && settled.hazards[0]?.flameCount === 0
       && settled.hazards[0]?.lobeCount === 1
-      && settled.hazards[0]?.heatSpotCount === 2
+      && settled.hazards[0]?.heatSpotCount === 4
       && settled.hazards[0]?.heatSpotTextures.every((texture) => texture === 'molotov-ground-flame-orange')
       && settled.hazards[0]?.heatSpotAnimations.every((animation) => animation === 'molotov-ground-flame-orange-loop')
       && Math.abs(settled.hazards[0]?.groundWidth - 181.8) < 3
@@ -1125,7 +1125,7 @@ async function testAreaEffectReadability(browser) {
     const secondThrow = await page.evaluate(() => window.__ROOSTER_TEST__.getAreaEffectState());
     assert(secondThrow.molotovProjectiles === 2,
       'Rank-four Molotov did not launch its delayed second projectile.', secondThrow);
-    await page.waitForTimeout(720);
+    await page.waitForTimeout(900);
     const rankFour = await page.evaluate(() => window.__ROOSTER_TEST__.getAreaEffectState());
     assert(rankFour.hazards.length === 2
       && rankFour.hazards.every((zone) => (

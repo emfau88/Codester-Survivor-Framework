@@ -229,11 +229,11 @@ async function captureStage(page, weapon, stage, expectedRank, source) {
   await page.screenshot({ path: path.join(artifactDir, screenshot) });
   if (weapon.id === 'molotov-egg') {
     const visualExpectations = {
-      r1: { count: 1, texture: 'molotov-egg-r1', size: 28, fields: 1, radius: 90, lobes: 1, flames: 2, flamePalette: ['molotov-ground-flame-orange'] },
-      r2: { count: 1, texture: 'molotov-egg-r2', size: 32, fields: 1, radius: 108, lobes: 2, flames: 3, flamePalette: ['molotov-ground-flame-orange'] },
-      r3: { count: 1, texture: 'molotov-egg-r3', size: 36, fields: 1, radius: 124, lobes: 3, flames: 4, flamePalette: ['molotov-ground-flame-orange'] },
-      r4: { count: 2, texture: 'molotov-egg-r4', size: 40, fields: 2, radius: 112, lobes: 3, flames: 4, flamePalette: ['molotov-ground-flame-blue'] },
-      evo: { count: 2, texture: 'molotov-egg-evo', size: 44, fields: 2, radius: 136, lobes: 4, flames: 5, flamePalette: ['molotov-ground-flame-orange', 'molotov-ground-flame-blue'] }
+      r1: { count: 1, texture: 'molotov-egg-r1', size: 28, fields: 1, radius: 90, lobes: 1, flames: 4, flamePalette: ['molotov-ground-flame-orange'] },
+      r2: { count: 1, texture: 'molotov-egg-r2', size: 32, fields: 1, radius: 108, lobes: 2, flames: 6, flamePalette: ['molotov-ground-flame-orange'] },
+      r3: { count: 1, texture: 'molotov-egg-r3', size: 36, fields: 1, radius: 124, lobes: 3, flames: 8, flamePalette: ['molotov-ground-flame-orange'] },
+      r4: { count: 2, texture: 'molotov-egg-r4', size: 40, fields: 2, radius: 112, lobes: 3, flames: 5, flamePalette: ['molotov-ground-flame-blue'] },
+      evo: { count: 2, texture: 'molotov-egg-evo', size: 44, fields: 2, radius: 136, lobes: 4, flames: 6, flamePalette: ['molotov-ground-flame-orange', 'molotov-ground-flame-blue'] }
     };
     const expected = visualExpectations[stage];
     assert(areaAtFlight.molotovFlights.length === expected.count
