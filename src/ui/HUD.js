@@ -963,7 +963,7 @@ export class HUD {
     const sourceRows = sources.length
       ? sources.slice(0, 10).map((source) => `
         <tr>
-          <td>${this.formatSource(source.source)}</td>
+          <td><span class="run-report__source"><i data-report-icon="${this.iconIdFromReportSource(source.source, report.rooster?.id)}"></i>${this.formatSource(source.source)}</span></td>
           <td>${Math.round(source.effectiveDamage)}</td>
           <td>${Math.round(source.damageShare * 100)}%</td>
           <td>${source.hitRate === null ? '–' : `${Math.round(source.hitRate * 100)}%`}</td>
@@ -974,10 +974,10 @@ export class HUD {
       : '<tr><td colspan="7">No combat data yet.</td></tr>';
     const build = report.build ?? { active: [], passive: [], evolutions: [] };
     const active = build.active
-      .map((entry) => `<span>${entry.name} ${entry.rank === 'EVO' ? 'EVO' : `R${entry.rank}`}</span>`)
+      .map((entry) => `<span><i data-report-icon="${this.iconIdFromLabel(entry.name) ?? 'active-upgrade'}"></i>${entry.name} ${entry.rank === 'EVO' ? 'EVO' : `R${entry.rank}`}</span>`)
       .join('');
     const passive = build.passive
-      .map((entry) => `<span>${entry.name} R${entry.rank}</span>`)
+      .map((entry) => `<span><i data-report-icon="${this.iconIdFromLabel(entry.name) ?? 'active-upgrade'}"></i>${entry.name} R${entry.rank}</span>`)
       .join('');
     const evos = build.evolutions.map((entry) => entry.name).join(', ') || 'None';
     const unlockLabels = {
@@ -988,24 +988,29 @@ export class HUD {
       'first-clear': 'First clear'
     };
     const unlocks = (report.newUnlocks ?? []).map((unlock) => `
-      <span><strong>${unlockLabels[unlock.type] ?? 'Progress'}</strong>${this.formatSource(unlock.id)}</span>
+      <article class="run-report__unlock-card">
+        <i data-report-icon="${this.iconIdFromUnlock(unlock)}"></i>
+        <span><small>${unlockLabels[unlock.type] ?? 'Progress'}</small><strong>${this.formatSource(unlock.id)}</strong></span>
+      </article>
     `).join('');
     const metaReward = report.metaReward;
+    const roosterPortrait = ROOSTER_PORTRAITS[report.rooster?.id] ?? ROOSTER_PORTRAITS.ace;
+    const arenaPreview = ARENA_PREVIEWS[report.arena?.id] ?? ARENA_PREVIEWS['open-yard'];
     this.setOverlayVisible(true);
     this.overlay.innerHTML = `
       <div class="panel run-report">
         <h1>${title}</h1>
         <p>${message}</p>
         <div class="run-report__summary">
-          <span><small>Rooster</small><strong>${report.rooster?.name ?? 'Unknown'}</strong></span>
-          <span><small>Arena</small><strong>${report.arena?.name ?? 'Unknown'}</strong></span>
-          <span><small>Mode</small><strong>${report.challenge?.name ?? 'Standard Run'}</strong></span>
-          <span><small>Time</small><strong>${this.formatDuration(report.elapsedMs ?? 0)}</strong></span>
-          <span><small>Kills</small><strong>${report.kills ?? 0}</strong></span>
-          <span><small>Hits</small><strong>${report.shots ? `${Math.round(Math.min(1, report.hits / report.shots) * 100)}%` : '–'}</strong></span>
-          <span><small>Peak</small><strong>${report.maxEnemiesAlive ?? 0}</strong></span>
-          <span><small>Death cause</small><strong>${this.formatSource(report.deathCause ?? '–')}</strong></span>
-          <span><small>EVOs</small><strong>${build.evolutions.length}</strong></span>
+          <span class="run-report__summary-card run-report__summary-card--portrait"><img src="${roosterPortrait}" alt=""><span><small>Rooster</small><strong>${report.rooster?.name ?? 'Unknown'}</strong></span></span>
+          <span class="run-report__summary-card run-report__summary-card--arena"><img src="${arenaPreview.url}" alt=""><span><small>Arena</small><strong>${report.arena?.name ?? 'Unknown'}</strong></span></span>
+          <span class="run-report__summary-card"><i data-report-icon="active-upgrade"></i><span><small>Mode</small><strong>${report.challenge?.name ?? 'Standard Run'}</strong></span></span>
+          <span class="run-report__summary-card"><i data-report-icon="timer"></i><span><small>Time</small><strong>${this.formatDuration(report.elapsedMs ?? 0)}</strong></span></span>
+          <span class="run-report__summary-card"><i data-report-icon="active-upgrade"></i><span><small>Kills</small><strong>${report.kills ?? 0}</strong></span></span>
+          <span class="run-report__summary-card"><i data-report-icon="double-shot"></i><span><small>Hits</small><strong>${report.shots ? `${Math.round(Math.min(1, report.hits / report.shots) * 100)}%` : '–'}</strong></span></span>
+          <span class="run-report__summary-card"><i data-report-icon="wave"></i><span><small>Peak</small><strong>${report.maxEnemiesAlive ?? 0}</strong></span></span>
+          <span class="run-report__summary-card"><i data-report-icon="hp"></i><span><small>Death cause</small><strong>${this.formatSource(report.deathCause ?? '–')}</strong></span></span>
+          <span class="run-report__summary-card"><i data-report-icon="evo-sunshot-array"></i><span><small>EVOs</small><strong>${build.evolutions.length}</strong></span></span>
         </div>
         <div class="run-report__build"><strong>Active</strong>${active || '<span>–</span>'}</div>
         <div class="run-report__build run-report__build--passive"><strong>Passive</strong>${passive || '<span>–</span>'}</div>
@@ -1026,6 +1031,7 @@ export class HUD {
       </div>
     `;
     this.setIcon(this.overlay.querySelector('[data-restart-icon]'), 'restart');
+    this.overlay.querySelectorAll('[data-report-icon]').forEach((icon) => this.setIcon(icon, icon.dataset.reportIcon));
     this.overlay.querySelector('button').addEventListener('click', this.onRestart);
   }
 
@@ -1454,6 +1460,21 @@ export class HUD {
   iconIdFromLabel(label) {
     const clean = label.replace(/\s+\d+$/, '');
     return ICON_IDS_BY_NAME[clean] ?? null;
+  }
+
+  iconIdFromReportSource(source, roosterId) {
+    if (source === 'base-egg') return `primary-${roosterId ?? 'ace'}`;
+    if (source === 'pickup') return 'heal';
+    if (source === 'molotov-burn') return 'molotov-egg';
+    return source;
+  }
+
+  iconIdFromUnlock(unlock) {
+    if (unlock.type === 'rooster') return 'active-upgrade';
+    if (unlock.type === 'mastery') return 'badge-5';
+    if (unlock.type === 'challenge') return 'badge-3';
+    if (unlock.type === 'first-clear') return 'badge-1';
+    return 'golden-egg';
   }
 
   setIcon(element, id) {

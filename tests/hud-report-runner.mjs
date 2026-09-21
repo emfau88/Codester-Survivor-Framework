@@ -328,6 +328,9 @@ async function verifySettingsAndReport(browser, serverUrl) {
         tableRows: [...document.querySelectorAll('.run-report tbody tr')].map((row) => row.textContent.trim()),
         summaryText: document.querySelector('.run-report__summary')?.textContent ?? '',
         buildText: document.querySelector('.run-report__build')?.textContent ?? '',
+        reportIcons: document.querySelectorAll('.run-report [data-report-icon].ui-icon').length,
+        roosterPortrait: document.querySelector('.run-report__summary-card--portrait img')?.getAttribute('src') ?? '',
+        arenaPreview: document.querySelector('.run-report__summary-card--arena img')?.getAttribute('src') ?? '',
         panel: { left: panel.left, right: panel.right, top: panel.top, bottom: panel.bottom, height: panel.height },
         standards: window.__ROOSTER_TEST__.getPresentationStandards()
       };
@@ -346,6 +349,8 @@ async function verifySettingsAndReport(browser, serverUrl) {
     'Run report does not expose every required combat metric.', result.tableHeaders);
     assert(result.summaryText.includes('Barnyard Ace') && result.buildText.includes('Target Egg'),
       'Run report does not identify rooster and build.', result);
+    assert(result.reportIcons >= result.tableRows.length + 9 && result.roosterPortrait && result.arenaPreview,
+      'Run report is missing the visual summary, loadout, or combat-source icons.', result);
     assert(result.panel.left >= 0 && result.panel.right <= 390 && result.panel.height <= 812,
       'Run report does not fit the portrait viewport.', result.panel);
     assert(Object.keys(result.standards.colors).length === 5

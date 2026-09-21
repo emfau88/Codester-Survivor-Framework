@@ -1,7 +1,7 @@
 # Rooster Rage – Umsetzungsplan
 
 Status: in Arbeit  
-Letzte Aktualisierung: 20. September 2026
+Letzte Aktualisierung: 21. September 2026
 
 Dieses Dokument ist die verbindliche Checkliste für die aus dem Gameplay-Audit abgeleiteten Arbeiten. Ein Punkt wird erst abgehakt, wenn die zugehörigen automatisierten Gates grün sind und die Abnahmekriterien erfüllt wurden.
 
@@ -9,7 +9,7 @@ Dieses Dokument ist die verbindliche Checkliste für die aus dem Gameplay-Audit 
 
 | Punkt | Befund | Nächstep Aktion | Status |
 | --- | --- | --- | --- |
-| Wave-1-Dauer | Retest: 30,80 s Desktop / 22,05 s Portrait | Sichtbarkeit besteht, Desktop liegt 2,80 s über dem 22–28-s-Gate; adaptive Zeitbudgetierung stabilisieren | aktiv – Regression nach XP-Pacing |
+| Wave-1-Dauer | Retest: 30,80 s Desktop / 22,05 s Portrait | Ursache bestätigt: `directorTargetDurationMs` plant bereits 28,2 s Spawnzeit ein; den Kill-Nachlauf einrechnen und den Spawn-Zeitplan auf ca. 24–25 s senken, dann Desktop/Portrait erneut messen | aktiv – Zeitmodell korrigieren |
 | Wave-1-Sichtbarkeit | letzter Lauf: längste Lücke 1,83 s auf Desktop und Portrait | Bewegungsführende Kamera-Spawnzone, enger Eskalations-Rand und adaptiver Nachschub | erledigt |
 | Phase-3-Erstentscheidung | Retest: 26,02–35,25 s in der 1-Seed-Matrix | Fünf von sechs Szenarien bestehen das 25–35-s-Gate; Stormcrest Desktop liegt 0,25 s darüber. Multi-Seed-Abnahme und Feinabstimmung offen | aktiv – Multi-Seed-Abnahme |
 
@@ -143,7 +143,7 @@ Hinweis vor Umsetzung: „kontrollierter Rückstoß“ bedeutet ausschließlich 
 
 Die serielle 1-Seed-Pacing-Matrix auf Open Yard (drei Rooster × Desktop/Portrait) ergab: Ace 26,68 s / 26,02 s, Boombardier 33,43 s / 27,82 s, Stormcrest 35,25 s / 30,18 s bis zur ersten Wahl. Damit liegen fünf von sechs Szenarien im 25–35-s-Fenster; Stormcrest Desktop bleibt offen.
 
-Der adaptive Wave-1-Retest verbesserte die längste Sichtbarkeitslücke auf Desktop von 2,95 s auf 1,38 s und im Portrait von 1,97 s auf 1,85 s. Die adaptive Desktop-Wave dauerte jedoch 30,80 s und verfehlte damit weiterhin den 22–28-s-Korridor; Portrait bestand mit 22,05 s.
+Der adaptive Wave-1-Retest verbesserte die längste Sichtbarkeitslücke auf Desktop von 2,95 s auf 1,38 s und im Portrait von 1,97 s auf 1,85 s. Die adaptive Desktop-Wave dauerte jedoch 30,80 s und verfehlte damit weiterhin den 22–28-s-Korridor; Portrait bestand mit 22,05 s. Ursache: Der Director plant die 24 Gegner bereits über `directorTargetDurationMs: 28_200` Millisekunden ein. Der Abnahmewert misst dagegen bis zum Tod des letzten Gegners – der verbleibende Kampf-Nachlauf kommt noch hinzu. Vor einem neuen Retest muss deshalb das Spawn-Zeitbudget, nicht nur die adaptive Vorziehung, auf ungefähr 24–25 Sekunden reduziert werden.
 
 ## Phase-7-Abnahme – Lauf vom 21. September 2026
 
