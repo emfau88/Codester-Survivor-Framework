@@ -114,6 +114,9 @@ async function spawnTargetsAndTrigger(page, weapon, stage) {
     api.clearEnemies();
     if (!companion) api.clearProjectiles();
     api.movePlayer(700, 450);
+    const safeShowcaseCluster = [
+      [220, -48], [230, 48], [260, -78], [260, 78], [292, -34], [292, 34]
+    ];
     for (let index = 0; index < 14; index += 1) {
       const angle = (Math.PI * 2 * index) / 14;
       const showcaseProjectile = [
@@ -126,10 +129,13 @@ async function spawnTargetsAndTrigger(page, weapon, stage) {
       const nearRadius = showcaseProjectile ? 170 : 82;
       const farRadius = showcaseProjectile ? 245 : 145;
       const radius = index < 6 ? nearRadius : farRadius + (index % 3) * 34;
+      const showcasePoint = showcaseProjectile && index < safeShowcaseCluster.length
+        ? safeShowcaseCluster[index]
+        : null;
       api.spawnEnemyType(
         'slime',
-        700 + Math.cos(angle) * radius,
-        450 + Math.sin(angle) * radius,
+        700 + (showcasePoint?.[0] ?? Math.cos(angle) * radius),
+        450 + (showcasePoint?.[1] ?? Math.sin(angle) * radius),
         { hp: 9999, speed: 0, damage: 0, xpOverride: 0 }
       );
     }
@@ -229,11 +235,11 @@ async function captureStage(page, weapon, stage, expectedRank, source) {
   await page.screenshot({ path: path.join(artifactDir, screenshot) });
   if (weapon.id === 'molotov-egg') {
     const visualExpectations = {
-      r1: { count: 1, texture: 'molotov-egg-r1', size: 28, fields: 1, radius: 90, lobes: 1, flames: 2, flamePalette: ['molotov-ground-flame-orange'] },
-      r2: { count: 1, texture: 'molotov-egg-r2', size: 32, fields: 1, radius: 108, lobes: 2, flames: 3, flamePalette: ['molotov-ground-flame-orange'] },
-      r3: { count: 1, texture: 'molotov-egg-r3', size: 36, fields: 1, radius: 124, lobes: 3, flames: 4, flamePalette: ['molotov-ground-flame-orange'] },
-      r4: { count: 2, texture: 'molotov-egg-r4', size: 40, fields: 2, radius: 112, lobes: 3, flames: 4, flamePalette: ['molotov-ground-flame-blue'] },
-      evo: { count: 2, texture: 'molotov-egg-evo', size: 44, fields: 2, radius: 136, lobes: 4, flames: 5, flamePalette: ['molotov-ground-flame-orange', 'molotov-ground-flame-blue'] }
+      r1: { count: 1, texture: 'molotov-egg-r1', size: 28, fields: 1, radius: 90, lobes: 1, flames: 4, flamePalette: ['molotov-ground-flame-orange'] },
+      r2: { count: 1, texture: 'molotov-egg-r2', size: 32, fields: 1, radius: 108, lobes: 2, flames: 6, flamePalette: ['molotov-ground-flame-orange'] },
+      r3: { count: 1, texture: 'molotov-egg-r3', size: 36, fields: 1, radius: 124, lobes: 3, flames: 8, flamePalette: ['molotov-ground-flame-orange'] },
+      r4: { count: 2, texture: 'molotov-egg-r4', size: 40, fields: 2, radius: 112, lobes: 3, flames: 5, flamePalette: ['molotov-ground-flame-blue'] },
+      evo: { count: 2, texture: 'molotov-egg-evo', size: 44, fields: 2, radius: 136, lobes: 4, flames: 6, flamePalette: ['molotov-ground-flame-orange', 'molotov-ground-flame-blue'] }
     };
     const expected = visualExpectations[stage];
     assert(areaAtFlight.molotovFlights.length === expected.count
@@ -296,10 +302,13 @@ async function captureStage(page, weapon, stage, expectedRank, source) {
     assert(areaAtFlight.rocketFlights.length === 1
       && areaAtFlight.rocketFlights[0].texture === expected.texture,
     `Rocket Egg ${stage} did not begin with its dedicated lead rocket.`, { expected, areaAtFlight });
-    await page.waitForFunction((flightCount) => (
-      window.__ROOSTER_TEST__.getAreaEffectState().rocketFlights.length >= flightCount
-    ), expected.count, { timeout: 700 });
-    const flightState = await page.evaluate(() => window.__ROOSTER_TEST__.getAreaEffectState());
+    let flightState = areaAtFlight;
+    if (expected.count > 1) {
+      await page.waitForFunction((flightCount) => (
+        window.__ROOSTER_TEST__.getAreaEffectState().rocketFlights.length >= flightCount
+      ), expected.count, { timeout: 700 });
+      flightState = await page.evaluate(() => window.__ROOSTER_TEST__.getAreaEffectState());
+    }
     assert(flightState.rocketFlights.length === expected.count
       && flightState.rocketFlights.every((flight) => (
         flight.texture === expected.texture

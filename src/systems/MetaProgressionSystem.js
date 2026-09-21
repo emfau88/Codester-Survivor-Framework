@@ -10,6 +10,7 @@ import {
   TALENT_DEFINITIONS
 } from '../data/metaProgressionDefinitions.js';
 import { UPGRADE_DEFINITIONS } from '../data/upgradeDefinitions.js';
+import { safeStorage } from './SafeStorage.js';
 
 const MAX_HISTORY = 10;
 const ROOSTER_IDS = ['ace', 'artillery', 'storm'];
@@ -165,7 +166,7 @@ function legacyMigrationGrant(state) {
 }
 
 export class MetaProgressionSystem {
-  constructor(storage = globalThis.localStorage) {
+  constructor(storage = safeStorage) {
     this.storage = storage;
     this.lastRunReward = null;
     this.state = this.load();

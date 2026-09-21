@@ -518,7 +518,7 @@ export class EnemyAttackSystem {
 
   findSafeAddSpawn(originX, originY, baseAngle, minDistance) {
     const player = this.scene.player.sprite;
-    const bounds = this.scene.arena.bounds;
+    const bounds = this.scene.arena.combatBounds;
     const margin = 54;
     let farthest = null;
 

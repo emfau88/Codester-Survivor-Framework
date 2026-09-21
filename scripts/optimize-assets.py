@@ -96,6 +96,7 @@ RUNTIME_IMAGES = (
     "meta/mastery-storm.png",
     "enemy-slime.png",
     "enemies/animations/enemy-slime-wobble.png",
+    "enemies/animations/enemy-slime-hop-v2.png",
     "enemies/animations/enemy-kornkrabbler-run.png",
     "enemies/animations/enemy-runner-run.png",
     "enemies/animations/enemy-elite-runner-run.png",

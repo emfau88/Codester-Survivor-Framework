@@ -76,6 +76,7 @@ export function installTestApi(scene) {
       choosingUpgrade: scene.isChoosingUpgrade,
       choosingRooster: scene.isChoosingRooster,
       gameEnded: scene.gameEnded,
+      pause: scene.gamePause?.getState(),
       lastShotAt: scene.debugStats.lastShotAt,
       lastHitAt: scene.debugStats.lastHitAt,
       lastError: scene.debugStats.lastError,
@@ -630,9 +631,11 @@ export function installTestApi(scene) {
       spriteAlpha: projectile.sprite.alpha,
       displayWidth: projectile.sprite.displayWidth,
       source: projectile.source,
+      targetId: projectile.target?.id ?? null,
       visualRank: projectile.visualRank,
       fireVisualRank: projectile.fireVisualRank,
       criticalVisual: projectile.criticalVisual,
+      stormContactVisual: projectile.stormContactVisual,
       tint: projectile.sprite.tintTopLeft,
       trailRadius: projectile.trail.radius,
       trailAlpha: projectile.trail.alpha,
@@ -719,6 +722,10 @@ export function installTestApi(scene) {
       velocityX: enemy.sprite.body?.velocity.x ?? 0,
       velocityY: enemy.sprite.body?.velocity.y ?? 0,
       animation: enemy.sprite.anims.currentAnim?.key ?? null,
+      animationFrame: enemy.sprite.anims.currentFrame?.index ?? null,
+      animationFrameCount: enemy.sprite.anims.currentAnim?.frames?.length ?? 0,
+      animationFrameRate: enemy.sprite.anims.currentAnim?.frameRate ?? 0,
+      animationYoyo: enemy.sprite.anims.currentAnim?.yoyo ?? false,
       animationState: enemy.animationState ?? null,
       texture: enemy.sprite.texture.key,
       hpBarVisible: enemy.hpBarBack.visible || enemy.hpBarFill.visible,
@@ -819,6 +826,15 @@ export function installTestApi(scene) {
     startChestReward: (kind = 'elite') => {
       scene.runState.startChestReward(kind);
       return window.__ROOSTER_TEST__.getProgressionState();
+    },
+    startLevelUp: (count = 1) => {
+      scene.startLevelUp(count);
+      return window.__ROOSTER_TEST__.getProgressionState();
+    },
+    openSettings: () => scene.openSettings(),
+    pauseForFocusLoss: () => {
+      scene.handleFocusLost(true);
+      return scene.gamePause.getState();
     },
     rerollUpgradeChoices: () => scene.rerollUpgradeChoices(),
     setPlayerCombatModifiers: (modifiers = {}) => {

@@ -328,6 +328,17 @@ async function verifySettingsAndReport(browser, serverUrl) {
         tableRows: [...document.querySelectorAll('.run-report tbody tr')].map((row) => row.textContent.trim()),
         summaryText: document.querySelector('.run-report__summary')?.textContent ?? '',
         buildText: document.querySelector('.run-report__build')?.textContent ?? '',
+        reportIcons: document.querySelectorAll('.run-report [data-report-icon].ui-icon').length,
+        roosterPortrait: document.querySelector('.run-report__summary-card--portrait img')?.getAttribute('src') ?? '',
+        arenaPreview: document.querySelector('.run-report__summary-card--arena img')?.getAttribute('src') ?? '',
+        combatHudHidden: document.querySelector('.hud')?.hidden ?? false,
+        floatingFeedback: [...document.querySelectorAll('.wave-banner, .upgrade-confirmation, .multi-kill')]
+          .map((element) => ({
+            className: element.className,
+            hidden: element.hidden,
+            opacity: getComputedStyle(element).opacity,
+            display: getComputedStyle(element).display
+          })),
         panel: { left: panel.left, right: panel.right, top: panel.top, bottom: panel.bottom, height: panel.height },
         standards: window.__ROOSTER_TEST__.getPresentationStandards()
       };
@@ -346,6 +357,13 @@ async function verifySettingsAndReport(browser, serverUrl) {
     'Run report does not expose every required combat metric.', result.tableHeaders);
     assert(result.summaryText.includes('Barnyard Ace') && result.buildText.includes('Target Egg'),
       'Run report does not identify rooster and build.', result);
+    assert(result.reportIcons >= result.tableRows.length + 9 && result.roosterPortrait && result.arenaPreview,
+      'Run report is missing the visual summary, loadout, or combat-source icons.', result);
+    assert(result.floatingFeedback.every((element) => (
+      element.hidden ? element.display === 'none' : element.opacity === '0'
+    )),
+      'Combat feedback must not overlap the run report.', result.floatingFeedback);
+    assert(result.combatHudHidden, 'The combat HUD must not remain visible below the run report.', result);
     assert(result.panel.left >= 0 && result.panel.right <= 390 && result.panel.height <= 812,
       'Run report does not fit the portrait viewport.', result.panel);
     assert(Object.keys(result.standards.colors).length === 5
@@ -358,7 +376,8 @@ async function verifySettingsAndReport(browser, serverUrl) {
       sources: result.report.combatSources,
       deathCause: result.report.deathCause,
       build: result.report.build,
-      panel: result.panel
+      panel: result.panel,
+      floatingFeedback: result.floatingFeedback
     };
   } finally {
     await page.close();

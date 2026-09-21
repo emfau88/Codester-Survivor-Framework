@@ -9,6 +9,7 @@ import {
 
 const artifactDir = path.join(projectRoot, 'test-results');
 const roosterIds = ['ace', 'artillery', 'storm'];
+const WAVE_TIMEOUT_MS = 55000;
 
 function assert(condition, message, details) {
   if (!condition) throw new Error(`${message}\n${JSON.stringify(details ?? {}, null, 2)}`);
@@ -50,7 +51,7 @@ async function runRooster(browser, serverUrl, roosterId) {
     }, roosterId);
 
     const startedAt = Date.now();
-    while (Date.now() - startedAt < 42000) {
+    while (Date.now() - startedAt < WAVE_TIMEOUT_MS) {
       await page.waitForTimeout(500);
       const state = await page.evaluate(() => window.__ROOSTER_TEST__.getState());
       const wave = state.telemetry.waves.find((entry) => entry.wave === 7);
@@ -71,10 +72,14 @@ async function runRooster(browser, serverUrl, roosterId) {
       damageTaken: wave?.damageTaken ?? 0,
       deathCause: state.telemetry.deathCause,
       deferredAttacks: state.telemetry.enemyAttacksDeferred,
+      gameEnded: state.gameEnded,
+      timedOut: !state.gameEnded && wave?.outcome !== 'completed',
       errors
     };
     assert(wave && errors.length === 0 && !state.lastError,
       `${roosterId} pressure run had a runtime failure.`, result);
+    assert(result.waveOutcome === 'completed',
+      `${roosterId} did not complete Wave 7 before the pressure timeout.`, result);
     assert(result.peakEnemyProjectiles <= 12 && result.averageEnemyProjectiles <= 10,
       `${roosterId} exceeded normal projectile pressure targets.`, result);
     assert(result.averagePlayerSpeed >= 45,

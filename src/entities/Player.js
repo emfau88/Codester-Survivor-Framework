@@ -9,7 +9,7 @@ export class Player {
     this.speed = 210;
     this.level = 1;
     this.xp = 0;
-    this.xpToNext = 60;
+    this.xpToNext = this.getXpRequirement(this.level);
     this.fireRate = 800;
     this.projectileDamage = 20;
     this.shotCount = 1;
@@ -37,6 +37,7 @@ export class Player {
     this.upgradeRanks = new Map();
     this.invulnerableUntil = 0;
     this.baseScale = 0.25;
+    this.collisionReferenceScale = this.baseScale;
 
     this.sprite = scene.physics.add.sprite(x, y, this.roosterTextureKey, 0);
     this.sprite.setScale(this.baseScale);
@@ -97,7 +98,11 @@ export class Player {
       alpha: 0.45,
       yoyo: true,
       duration: 70,
-      repeat: 2
+      repeat: 2,
+      // Keep the player opaque after the hit flash, even if the visual is
+      // interrupted by a future effect.
+      onComplete: () => this.sprite.setAlpha(1),
+      onStop: () => this.sprite.setAlpha(1)
     });
     return true;
   }
@@ -162,8 +167,19 @@ export class Player {
     this.sprite.play(`rooster-${roosterId}-walk-${this.lastMoveDirection}`, true);
   }
 
+  setVisualScale(scale, collisionReferenceScale = scale) {
+    this.baseScale = scale;
+    this.collisionReferenceScale = collisionReferenceScale;
+    this.sprite.setScale(scale);
+    // Keep the existing gameplay footprint and its authored footward offset
+    // while allowing the artwork to be a little larger on desktop.
+    const radius = 58 * collisionReferenceScale / scale;
+    const centerYOffset = 16 * collisionReferenceScale / scale;
+    this.sprite.setCircle(radius, 128 - radius, 128 + centerYOffset - radius);
+  }
+
   getXpRequirement(level) {
-    const requirements = [35, 70, 105, 145, 190, 245, 305, 375, 455, 545, 645, 755];
+    const requirements = [45, 70, 105, 145, 190, 245, 305, 375, 455, 545, 645, 755];
     return requirements[Math.min(requirements.length - 1, Math.max(0, level - 1))]
       + Math.max(0, level - requirements.length) * 90;
   }

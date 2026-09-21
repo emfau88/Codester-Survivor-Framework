@@ -1,4 +1,8 @@
 import { ROOSTER_DEFINITIONS, getRoosterDefinition } from '../data/roosterDefinitions.js';
+import { getSceneViewport } from './DisplayResolutionSystem.js';
+
+const DESKTOP_READABILITY_MIN_WIDTH = 900;
+const DESKTOP_READABILITY_SCALE = 1.1;
 
 export class RoosterClassSystem {
   constructor(scene) {
@@ -40,8 +44,7 @@ export class RoosterClassSystem {
     player.projectileDamage = definition.stats.projectileDamage;
     player.critChance = definition.stats.critChance;
     this.scene.challenge?.applyPlayer(player);
-    player.baseScale = definition.visual.scale;
-    player.sprite.setScale(player.baseScale);
+    this.applyResponsiveVisualScale();
     player.sprite.clearTint();
     const cosmetic = this.scene.meta?.getSelectedCosmetic(definition.id);
     const tint = cosmetic?.tint ?? null;
@@ -49,6 +52,16 @@ export class RoosterClassSystem {
       player.sprite.setTint(tint);
     }
     player.updateHealthBar();
+  }
+
+  applyResponsiveVisualScale() {
+    if (!this.selected) return;
+    const { width, height } = getSceneViewport(this.scene);
+    const authoredScale = this.selected.visual.scale;
+    const desktopMultiplier = width >= DESKTOP_READABILITY_MIN_WIDTH && width > height
+      ? DESKTOP_READABILITY_SCALE
+      : 1;
+    this.scene.player.setVisualScale(authoredScale * desktopMultiplier, authoredScale);
   }
 
   evolvePrimary(baseId, evolutionId) {

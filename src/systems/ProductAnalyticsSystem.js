@@ -1,3 +1,5 @@
+import { safeStorage } from './SafeStorage.js';
+
 const CONSENT_KEY = 'rooster-rage-product-analytics-v1';
 const SESSION_KEY = '__ROOSTER_PRODUCT_SESSION__';
 const ALLOWED_EVENTS = new Set([
@@ -45,7 +47,7 @@ function sanitizeProperties(properties = {}) {
 export class ProductAnalyticsSystem {
   constructor({
     endpoint = import.meta.env.VITE_TELEMETRY_ENDPOINT ?? '',
-    storage = globalThis.localStorage,
+    storage = safeStorage,
     navigatorRef = globalThis.navigator
   } = {}) {
     this.storage = storage;

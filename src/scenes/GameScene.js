@@ -10,12 +10,13 @@ import {
 import { AudioSystem } from '../systems/AudioSystem.js';
 import { ArenaSystem } from '../systems/ArenaSystem.js';
 import { CollisionSystem } from '../systems/CollisionSystem.js';
-import { CombatSystem } from '../systems/CombatSystem.js';
+import { CombatSystem, getTargetAcquisitionMarginForViewport } from '../systems/CombatSystem.js';
 import { CombatFeedbackSystem } from '../systems/CombatFeedbackSystem.js';
 import { ChallengeSystem } from '../systems/ChallengeSystem.js';
 import { EnemyAttackSystem } from '../systems/EnemyAttackSystem.js';
 import { EffectSettingsSystem } from '../systems/EffectSettingsSystem.js';
 import { EntitySystem } from '../systems/EntitySystem.js';
+import { GamePauseSystem } from '../systems/GamePauseSystem.js';
 import { PlayerInputSystem } from '../systems/PlayerInputSystem.js';
 import { PickupSystem } from '../systems/PickupSystem.js';
 import { LoadoutSystem } from '../systems/LoadoutSystem.js';
@@ -67,6 +68,15 @@ export class GameScene extends Phaser.Scene {
     const requestedSeed = searchParams.get('seed');
     const requestedProfile = searchParams.get('profile') ?? 'manual';
     const requestedArena = searchParams.get('arena') ?? 'open-yard';
+    const targetMarginParameter = searchParams.get('targetMargin');
+    const requestedTargetMargin = targetMarginParameter === null
+      ? null
+      : Number(targetMarginParameter);
+    this.adaptiveSpawnsEnabled = !import.meta.env.DEV || searchParams.get('adaptiveSpawns') !== '0';
+    const viewport = getSceneViewport(this);
+    this.targetAcquisitionMargin = import.meta.env.DEV && Number.isFinite(requestedTargetMargin)
+      ? Phaser.Math.Clamp(requestedTargetMargin, 0, 0.5)
+      : getTargetAcquisitionMarginForViewport(viewport.width, viewport.height);
     const generatedSeed = globalThis.crypto?.getRandomValues
       ? globalThis.crypto.getRandomValues(new Uint32Array(1))[0]
       : Date.now();
@@ -132,6 +142,8 @@ export class GameScene extends Phaser.Scene {
     this.elapsed = 0;
     this.telemetry = new Telemetry({ seed: this.rng.seed, profile: requestedProfile });
     this.telemetry.summary.challengeId = this.challenge.id;
+    this.telemetry.summary.targetAcquisitionMargin = this.targetAcquisitionMargin;
+    this.telemetry.summary.adaptiveSpawnsEnabled = this.adaptiveSpawnsEnabled;
     this.productAnalytics = new ProductAnalyticsSystem();
     this.effects = new EffectSettingsSystem();
     this.audio = new AudioSystem(this);
@@ -167,6 +179,7 @@ export class GameScene extends Phaser.Scene {
     this.pickups = new PickupSystem(this);
     this.projectileLifecycle = new ProjectileLifecycleSystem(this);
     this.playerInput = new PlayerInputSystem(this, ARENA_WIDTH, ARENA_HEIGHT);
+    this.gamePause = new GamePauseSystem(this);
     this.cameras.main.startFollow(this.player.sprite, true, 0.12, 0.12);
     this.applyResponsiveCameraZoom();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.applyResponsiveCameraZoom, this);
@@ -192,6 +205,7 @@ export class GameScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
 
     this.setupTouchInput();
+    this.setupFocusPause();
     this.setupPhysics();
     installTestApi(this);
     this.audio.playMusic('menu-theme', { fadeMs: 700 });
@@ -204,38 +218,43 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time, delta) {
+    const simulationTime = this.time.now;
     if (this.gameEnded || this.isChoosingRooster || this.isSettingsOpen) {
       return;
     }
 
     if (this.isChoosingUpgrade) {
-      this.maybeChooseBotUpgrade(time);
+      this.maybeChooseBotUpgrade();
+      return;
+    }
+
+    if (this.gamePause?.isPaused) {
       return;
     }
 
     try {
       this.debugStats.frames += 1;
       this.elapsed += delta / 1000;
-      this.enemyDangerZones = this.enemyDangerZones.filter((zone) => zone.expiresAt > time);
+      this.enemyDangerZones = this.enemyDangerZones.filter((zone) => zone.expiresAt > simulationTime);
       this.player.update(this.getMovementVector());
       this.arena.update();
-      this.roosterClasses.update(time);
+      this.roosterClasses.update(simulationTime);
       this.enemyAttacks.updateAuras(delta);
       this.enemies.forEach((enemy) => enemy.update(this.player));
       this.projectileLifecycle.update(delta);
-      this.activeAbilities.update(time);
-      this.pickups.update(time);
+      this.activeAbilities.update(simulationTime);
+      this.pickups.update(simulationTime);
       this.checkProjectileHits();
       this.projectileLifecycle.cleanup();
       this.xpOrbs.forEach((orb) => orb.update(this.player));
       if (this.isChoosingUpgrade) {
-        this.telemetry.sample(time, this.getTelemetrySample());
+        this.telemetry.sample(simulationTime, this.getTelemetrySample());
         this.updateHud();
         return;
       }
-      this.waveSystem.update(time, this.enemies.length);
-      this.autoShoot(time);
-      this.telemetry.sample(time, this.getTelemetrySample());
+      this.waveSystem.update(simulationTime, this.enemies.length);
+      this.autoShoot(simulationTime);
+      this.telemetry.sample(simulationTime, this.getTelemetrySample());
       this.updateHud();
 
       if (this.player.hp <= 0) {
@@ -269,7 +288,7 @@ export class GameScene extends Phaser.Scene {
     const returnToHub = this.isChoosingRooster;
     this.audio.play('ui-navigate');
     this.isSettingsOpen = true;
-    this.physics.pause();
+    this.gamePause.request('settings');
     this.hud.showSettings(
       this.effects.getState(),
       this.audio.getSettings(),
@@ -291,11 +310,11 @@ export class GameScene extends Phaser.Scene {
       () => {
         this.audio.play('ui-back');
         this.isSettingsOpen = false;
+        this.gamePause.release('settings');
         if (returnToHub) {
           this.runState.renderHub?.();
         } else {
           this.hud.hideOverlay();
-          this.physics.resume();
         }
       },
       returnToHub ? null : () => this.confirmReturnToHub()
@@ -332,6 +351,37 @@ export class GameScene extends Phaser.Scene {
     return this.playerInput.setupTouchInput();
   }
 
+  setupFocusPause() {
+    this.onFocusLost = this.handleFocusLost.bind(this);
+    window.addEventListener('blur', this.onFocusLost);
+    document.addEventListener('visibilitychange', this.onFocusLost);
+  }
+
+  handleFocusLost(force = false) {
+    if (!force && document.visibilityState === 'visible' && document.hasFocus?.()) {
+      return;
+    }
+    this.playerInput?.clearInput();
+    if (
+      this.gameEnded
+      || this.isChoosingRooster
+      || this.isChoosingUpgrade
+      || this.isSettingsOpen
+      || !this.gamePause.request('focus')
+    ) {
+      return;
+    }
+    this.hud.showFocusPause(() => {
+      if (!this.gamePause.has('focus')) {
+        return;
+      }
+      this.audio.play('ui-confirm');
+      this.gamePause.release('focus');
+      this.hud.hideOverlay();
+      this.updateHud();
+    });
+  }
+
   toggleFullscreen() {
     this.audio.play('ui-toggle');
     const root = document.documentElement;
@@ -346,22 +396,35 @@ export class GameScene extends Phaser.Scene {
     const { width, height } = getSceneViewport(this);
     const renderScale = getSceneRenderScale(this);
     const isPortraitMobile = width <= PORTRAIT_MOBILE_MAX_WIDTH && height > width;
+    let logicalZoom;
     if (!isPortraitMobile) {
-      this.logicalCameraZoom = 1;
-      this.cameras.main.setZoom(renderScale);
-      return;
+      logicalZoom = 1;
+    } else if (this.arena?.id === 'vertical-run' && width <= FEED_ALLEY_PORTRAIT_MAX_WIDTH) {
+      logicalZoom = FEED_ALLEY_PORTRAIT_ZOOM;
+    } else {
+      const renderHeight = ARENA_HEIGHT + ARENA_RENDER_PADDING_Y * 2;
+      const minimumCoverZoom = Math.max(width / ARENA_WIDTH, height / renderHeight);
+      logicalZoom = Math.max(PORTRAIT_MOBILE_ZOOM, minimumCoverZoom);
     }
-
-    if (this.arena?.id === 'vertical-run' && width <= FEED_ALLEY_PORTRAIT_MAX_WIDTH) {
-      this.logicalCameraZoom = FEED_ALLEY_PORTRAIT_ZOOM;
-      this.cameras.main.setZoom(this.logicalCameraZoom * renderScale);
-      return;
-    }
-
-    const renderHeight = ARENA_HEIGHT + ARENA_RENDER_PADDING_Y * 2;
-    const minimumCoverZoom = Math.max(width / ARENA_WIDTH, height / renderHeight);
-    this.logicalCameraZoom = Math.max(PORTRAIT_MOBILE_ZOOM, minimumCoverZoom);
+    this.logicalCameraZoom = logicalZoom;
     this.cameras.main.setZoom(this.logicalCameraZoom * renderScale);
+    this.applyResponsiveCameraBounds(width);
+    this.roosterClasses?.applyResponsiveVisualScale();
+  }
+
+  applyResponsiveCameraBounds(viewportWidth) {
+    if (!this.arena) return;
+    const world = this.arena.worldBounds;
+    let x = world.x;
+    let width = world.width;
+    if (this.arena.id === 'vertical-run') {
+      const visibleWorldWidth = viewportWidth / this.logicalCameraZoom;
+      if (visibleWorldWidth > world.width) {
+        x -= (visibleWorldWidth - world.width) / 2;
+        width = visibleWorldWidth;
+      }
+    }
+    this.cameras.main.setBounds(x, world.y, width, world.height);
   }
 
   updatePointerVector(pointer) {
@@ -568,8 +631,8 @@ export class GameScene extends Phaser.Scene {
     return this.chooseRooster(roosterId);
   }
 
-  maybeChooseBotUpgrade(time) {
-    return this.runState.maybeChooseBotUpgrade(time);
+  maybeChooseBotUpgrade() {
+    return this.runState.maybeChooseBotUpgrade();
   }
 
   pickBotUpgrade(choices) {
@@ -612,7 +675,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   onWaveStarted(wave, config) {
-    this.hud.showWaveBanner(wave, config);
+    if (wave === 1) {
+      this.hud.showArenaBanner(
+        this.arena.definition.name,
+        this.challenge.definition.name,
+        config
+      );
+    } else {
+      this.hud.showWaveBanner(wave, config);
+    }
     if (config.bossWave) {
       this.productAnalytics.trackBossReached(wave);
       this.audio.stopAmbience(350);
@@ -628,10 +699,18 @@ export class GameScene extends Phaser.Scene {
       name: config.name,
       bossWave: config.bossWave ?? false
     });
+    if (wave === 2) {
+      this.time.delayedCall(3500, () => {
+        if (this.gameEnded || this.waveSystem.currentWave < 2) return;
+        this.entities.spawnXp(this.player.sprite.x, this.player.sprite.y, 1);
+        this.telemetry.record('openingXpBridgeSpawned', this.time.now, { wave: 2, xp: 1 });
+      });
+    }
   }
 
   onWaveCompleted(wave) {
     if (wave < this.waveSystem.totalWaves) {
+      this.entities.flushBundledMicroXp(this.player.sprite.x, this.player.sprite.y);
       const sweptXp = this.collisions.collectAllXp();
       if (sweptXp > 0) {
         this.telemetry.record('waveXpSwept', this.time.now, { wave, xp: sweptXp });
@@ -735,6 +814,15 @@ export class GameScene extends Phaser.Scene {
 
   getTelemetrySample() {
     const nearestEnemy = this.findNearestEnemy();
+    const view = this.cameras.main.worldView;
+    const visibleEnemies = this.enemies.filter((enemy) => (
+      enemy.sprite.active
+      && enemy.sprite.x >= view.x
+      && enemy.sprite.x <= view.x + view.width
+      && enemy.sprite.y >= view.y
+      && enemy.sprite.y <= view.y + view.height
+    ));
+    const targetableEnemies = this.getTargetableEnemies();
     const nearestEnemyDistance = nearestEnemy
       ? Phaser.Math.Distance.Between(this.player.sprite.x, this.player.sprite.y, nearestEnemy.sprite.x, nearestEnemy.sprite.y)
       : Infinity;
@@ -760,6 +848,9 @@ export class GameScene extends Phaser.Scene {
     return {
       wave: this.waveSystem.currentWave,
       enemiesAlive: this.enemies.length,
+      visibleEnemies: visibleEnemies.length,
+      visibleEnemyIds: visibleEnemies.map((enemy) => enemy.id),
+      targetableEnemies: targetableEnemies.length,
       microFodderAlive: this.enemies.filter((enemy) => enemy.microFodder).length,
       specialEnemiesAlive: this.enemies.filter((enemy) => (
         !enemy.microFodder && enemy.role !== 'fodder'
@@ -773,6 +864,7 @@ export class GameScene extends Phaser.Scene {
       playerY: this.player.sprite.y,
       hpRatio: this.player.hp / this.player.maxHp,
       nearestEnemyDistance,
+      spawnDirector: this.waveSystem.director.getState(),
       objects,
       poolStats
     };
@@ -780,6 +872,9 @@ export class GameScene extends Phaser.Scene {
 
   shutdown() {
     this.scale.off(Phaser.Scale.Events.RESIZE, this.applyResponsiveCameraZoom, this);
+    window.removeEventListener('blur', this.onFocusLost);
+    document.removeEventListener('visibilitychange', this.onFocusLost);
+    this.gamePause?.destroy();
     this.playerInput?.destroy();
     this.roosterClasses?.destroy();
     this.combatFeedback?.destroy();

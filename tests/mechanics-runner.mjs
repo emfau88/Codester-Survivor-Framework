@@ -462,7 +462,7 @@ async function testWaveCuration(browser) {
     });
     const catalog = await page.evaluate(() => window.__ROOSTER_TEST__.getWaveCatalog());
     const expectedTypes = [
-      { slime: 30, kornkrabbler: 18 },
+      { slime: 15, kornkrabbler: 9 },
       { slime: 26, kornkrabbler: 24, runner: 12 },
       { slime: 24, kornkrabbler: 32, runner: 17, brute: 4, 'elite-runner': 1 },
       { slime: 36, kornkrabbler: 37, runner: 14, spitter: 5 },
@@ -473,7 +473,7 @@ async function testWaveCuration(browser) {
       { slime: 77, kornkrabbler: 98, brute: 20, 'fan-spitter': 6, support: 6, summoner: 2, 'elite-brute': 1 },
       { boss: 1 }
     ];
-    const expectedXpBudgets = [90, 114, 138, 165, 195, 228, 340, 384, 448, 0];
+    const expectedXpBudgets = [44, 159, 138, 165, 195, 228, 340, 384, 448, 0];
     assert(catalog.length === 10, 'Wave catalog should contain exactly ten waves.', catalog);
     catalog.forEach((wave, index) => {
       assert(wave.queue.length === wave.count, `Wave ${wave.wave} queue length does not match its budget.`, wave);
@@ -484,10 +484,12 @@ async function testWaveCuration(browser) {
       assert(Math.abs(wave.allocatedXp - expectedXpBudgets[index]) < 0.001,
         `Wave ${wave.wave} XP allocation drifted away from its fixed budget.`, wave);
     });
-    assert(JSON.stringify(catalog[0].xpCurve.segmentShares) === JSON.stringify([0.3, 0.44, 0.1, 0.16]),
+    assert(JSON.stringify(catalog[0].xpCurve.segmentShares) === JSON.stringify([0.4, 0.34, 0.1, 0.16]),
       'Wave one does not use the approved XP-only frontload curve.', catalog[0].xpCurve);
-    assert(catalog.slice(1).every((wave) => wave.xpCurve.segmentShares === null),
-      'XP frontloading leaked into a later wave.', catalog.map((wave) => wave.xpCurve));
+    assert(JSON.stringify(catalog[1].xpCurve.segmentShares) === JSON.stringify([0.28, 0.34, 0.14, 0.24]),
+      'Wave two does not receive the deferred opening XP curve.', catalog[1].xpCurve);
+    assert(catalog.slice(2).every((wave) => wave.xpCurve.segmentShares === null),
+      'XP frontloading leaked beyond the opening waves.', catalog.map((wave) => wave.xpCurve));
     assert(catalog[9].bossWave && catalog[9].queue[0] === 'boss', 'Wave 10 must be the boss finale.', catalog[9]);
 
     const microDirections = {};
@@ -672,8 +674,21 @@ async function testEnemyAbilities(browser) {
     await page.waitForTimeout(70);
     await page.evaluate(() => {
       window.__ROOSTER_TEST__.clearEnemies();
+      window.__ROOSTER_TEST__.spawnEnemyType('slime', 860, 420, { speed: 0, damage: 0, hp: 999 });
       window.__ROOSTER_TEST__.spawnEnemyType('slime', 900, 450, { speed: 0, damage: 0, hp: 999 });
+      window.__ROOSTER_TEST__.spawnEnemyType('slime', 940, 480, { speed: 0, damage: 0, hp: 999 });
     });
+    await page.waitForTimeout(70);
+    const slimeHop = await page.evaluate(() => window.__ROOSTER_TEST__.getEnemySnapshot());
+    assert(slimeHop.length === 3
+      && slimeHop.every((enemy) => enemy.texture === 'enemy-slime-hop-v2'
+        && enemy.animation === 'enemy-slime-hop-loop'
+        && enemy.animationFrameCount === 8
+        && enemy.animationFrameRate === 7
+        && enemy.animationYoyo === false),
+    'Slimes did not use the corrected eight-frame hop timing.', slimeHop);
+    assert(new Set(slimeHop.map((enemy) => enemy.animationFrame)).size > 1,
+      'Slime hop phases were synchronized instead of staggered.', slimeHop);
     await page.waitForTimeout(360);
     const afterRecycledFan = await page.evaluate(() => window.__ROOSTER_TEST__.getState());
     assert(
@@ -917,11 +932,12 @@ async function inspectTargetAcquisitionGate(browser, label, viewport) {
       };
     });
     const { baseState, initial, insideId, outsideIds, mixed, molotovTarget, outsideOnly } = result;
-    assert(initial.bounds.width > initial.bounds.visibleWidth * 1.99
-      && initial.bounds.width < initial.bounds.visibleWidth * 2.01
-      && initial.bounds.height > initial.bounds.visibleHeight * 1.99
-      && initial.bounds.height < initial.bounds.visibleHeight * 2.01,
-    `${label}: acquisition rectangle is not exactly camera view plus a half-screen margin per side.`, result);
+    const expectedMarginScreens = viewport.height > viewport.width ? 0.2 : 0.15;
+    const expectedScale = 1 + expectedMarginScreens * 2;
+    assert(Math.abs(initial.bounds.marginScreens - expectedMarginScreens) < 0.001
+      && Math.abs(initial.bounds.width - initial.bounds.visibleWidth * expectedScale) < 2
+      && Math.abs(initial.bounds.height - initial.bounds.visibleHeight * expectedScale) < 2,
+    `${label}: acquisition rectangle does not use the selected viewport-specific target margin.`, result);
     assert(Math.abs(initial.bounds.visibleWidth - baseState.viewport.width / baseState.cameraZoom) < 2
       && Math.abs(initial.bounds.visibleHeight - baseState.viewport.height / baseState.cameraZoom) < 2,
     `${label}: acquisition rectangle does not follow the logical camera viewport.`, result);
@@ -1070,7 +1086,7 @@ async function testAreaEffectReadability(browser) {
       && settled.hazards[0]?.animation === null
       && settled.hazards[0]?.flameCount === 0
       && settled.hazards[0]?.lobeCount === 1
-      && settled.hazards[0]?.heatSpotCount === 2
+      && settled.hazards[0]?.heatSpotCount === 4
       && settled.hazards[0]?.heatSpotTextures.every((texture) => texture === 'molotov-ground-flame-orange')
       && settled.hazards[0]?.heatSpotAnimations.every((animation) => animation === 'molotov-ground-flame-orange-loop')
       && Math.abs(settled.hazards[0]?.groundWidth - 181.8) < 3
@@ -1111,7 +1127,7 @@ async function testAreaEffectReadability(browser) {
     const secondThrow = await page.evaluate(() => window.__ROOSTER_TEST__.getAreaEffectState());
     assert(secondThrow.molotovProjectiles === 2,
       'Rank-four Molotov did not launch its delayed second projectile.', secondThrow);
-    await page.waitForTimeout(720);
+    await page.waitForTimeout(900);
     const rankFour = await page.evaluate(() => window.__ROOSTER_TEST__.getAreaEffectState());
     assert(rankFour.hazards.length === 2
       && rankFour.hazards.every((zone) => (

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { HazardZone } from '../../entities/HazardZone.js';
-import { MolotovEggProjectile } from '../../entities/MolotovEggProjectile.js';
+import { getMolotovFlightDuration, MolotovEggProjectile } from '../../entities/MolotovEggProjectile.js';
 import { TimedAbility } from './TimedAbility.js';
 import { findClusterTarget } from './abilityUtils.js';
 
@@ -18,7 +18,7 @@ export class MolotovEggAbility extends TimedAbility {
     const rank = this.rank;
     const evolved = this.evolved;
     const start = this.scene.player.getMuzzlePosition(28);
-    const flightMs = evolved ? 440 : Math.max(470, 690 - rank * 55);
+    const flightMs = getMolotovFlightDuration(rank, evolved);
     const lead = new Phaser.Math.Vector2(target.velocityX, target.velocityY)
       .scale((flightMs / 1000) * 0.9);
     if (lead.length() > 110) lead.setLength(110);

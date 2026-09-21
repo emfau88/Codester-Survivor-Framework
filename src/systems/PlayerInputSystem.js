@@ -24,7 +24,7 @@ export class PlayerInputSystem {
   }
 
   handlePointerDown(pointer) {
-    if (this.scene.isChoosingUpgrade || pointer.x > this.scene.scale.width * 0.58) {
+    if (this.scene.gamePause?.isPaused || this.scene.isChoosingUpgrade || pointer.x > this.scene.scale.width * 0.58) {
       return;
     }
     this.activePointerId = pointer.id;
@@ -42,10 +42,7 @@ export class PlayerInputSystem {
     if (pointer.id !== this.activePointerId) {
       return;
     }
-    this.activePointerId = null;
-    this.touchOrigin = null;
-    this.pointerVector.set(0, 0);
-    this.scene.hud.setJoystick(this.pointerVector);
+    this.clearInput();
   }
 
   updatePointerVector(pointer) {
@@ -62,6 +59,9 @@ export class PlayerInputSystem {
   }
 
   getMovementVector() {
+    if (this.scene.gamePause?.isPaused) {
+      return new Phaser.Math.Vector2(0, 0);
+    }
     const vector = new Phaser.Math.Vector2(0, 0);
     if (this.cursors.left.isDown || this.keys.A.isDown) vector.x -= 1;
     if (this.cursors.right.isDown || this.keys.D.isDown) vector.x += 1;
@@ -71,6 +71,14 @@ export class PlayerInputSystem {
       vector.copy(this.pointerVector);
     }
     return this.scene.bot.enabled ? this.getBotMovementVector() : vector;
+  }
+
+  clearInput() {
+    this.activePointerId = null;
+    this.touchOrigin = null;
+    this.pointerVector.set(0, 0);
+    [...Object.values(this.cursors), ...Object.values(this.keys)].forEach((key) => key?.reset?.());
+    this.scene.hud?.setJoystick(this.pointerVector);
   }
 
   getBotMovementVector() {
@@ -90,7 +98,7 @@ export class PlayerInputSystem {
       : Infinity;
 
     const profile = getPlayerProfile(this.scene.bot.strategy);
-    const arenaBounds = this.scene.arena?.bounds ?? {
+    const arenaBounds = this.scene.arena?.combatBounds ?? {
       x: 0,
       y: 0,
       width: this.arenaWidth,
@@ -155,7 +163,7 @@ export class PlayerInputSystem {
     const away = playerPosition.clone().subtract(bossPosition);
     const distance = Math.max(1, away.length());
     away.normalize();
-    const bounds = this.scene.arena?.bounds ?? {
+    const bounds = this.scene.arena?.combatBounds ?? {
       x: 0,
       y: 0,
       width: this.arenaWidth,
@@ -257,7 +265,7 @@ export class PlayerInputSystem {
       ));
     }
     if (escape.lengthSq() < 4) {
-      const bounds = this.scene.arena?.bounds ?? {
+      const bounds = this.scene.arena?.combatBounds ?? {
         x: 0,
         y: 0,
         width: this.arenaWidth,
@@ -329,7 +337,7 @@ export class PlayerInputSystem {
     let dodge = playerPosition.clone().subtract(mostUrgent.closestPoint);
     if (dodge.lengthSq() < 4) {
       dodge = new Phaser.Math.Vector2(-mostUrgent.velocity.y, mostUrgent.velocity.x);
-      const bounds = this.scene.arena?.bounds ?? { x: 0, y: 0, width: this.arenaWidth, height: this.arenaHeight };
+      const bounds = this.scene.arena?.combatBounds ?? { x: 0, y: 0, width: this.arenaWidth, height: this.arenaHeight };
       const arenaCenter = new Phaser.Math.Vector2(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
       if (playerPosition.clone().add(dodge).distance(arenaCenter)
         > playerPosition.clone().subtract(dodge).distance(arenaCenter)) {

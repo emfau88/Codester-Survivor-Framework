@@ -91,6 +91,18 @@ export class ArenaSystem {
     return { x, y, width: window.width, height: window.height };
   }
 
+  get combatBounds() {
+    const bounds = this.bounds;
+    if (this.streaming) return bounds;
+    const { top = 0, right = 0, bottom = 0, left = 0 } = this.definition.collisionInsets ?? {};
+    return {
+      x: bounds.x + left,
+      y: bounds.y + top,
+      width: Math.max(0, bounds.width - left - right),
+      height: Math.max(0, bounds.height - top - bottom)
+    };
+  }
+
   getCatalog() {
     return ARENA_DEFINITIONS.map((arena) => {
       const chunk = arena.streaming?.chunk;
@@ -113,7 +125,6 @@ export class ArenaSystem {
 
   renderTopology() {
     const { scene, definition } = this;
-    const center = this.getCenter();
     if (!this.streaming) {
       const { x, y, width, height } = definition.bounds;
       if (definition.id !== 'square-coop') {
@@ -122,14 +133,9 @@ export class ArenaSystem {
           .setDepth(1);
       }
     }
-    this.title = scene.add.text(center.x - 250, center.y - 380, definition.name.toUpperCase(), {
-      color: '#fff4cf',
-      fontFamily: 'system-ui, sans-serif',
-      fontSize: '18px',
-      fontStyle: 'bold',
-      stroke: '#1e1710',
-      strokeThickness: 4
-    }).setAlpha(definition.id === 'square-coop' ? 0 : 0.52).setDepth(2);
+    // Arena identity belongs to the fixed HUD intro. World-space lettering
+    // looked baked into the ground and drifted through streaming arenas.
+    this.title = null;
   }
 
   createObstacles() {
@@ -274,12 +280,11 @@ export class ArenaSystem {
     if (this.id === 'vertical-run') {
       const world = this.playableWorldBounds;
       const edgeWidth = 300;
-      const useVariant = Math.abs(chunkY) % 2 === 1;
-      record.edgeLeft.setTexture(useVariant ? 'arena-feed-alley-left-v2' : 'arena-feed-alley-left')
+      record.edgeLeft.setTexture('arena-feed-alley-left')
         .setPosition(world.x - edgeWidth / 2, centerY)
         .setFlip(false, false)
         .setDisplaySize(edgeWidth + 2, height + 2).setVisible(true);
-      record.edgeRight.setTexture(useVariant ? 'arena-feed-alley-right-v2' : 'arena-feed-alley-right')
+      record.edgeRight.setTexture('arena-feed-alley-right')
         .setPosition(world.x + world.width + edgeWidth / 2, centerY)
         .setFlip(false, false)
         .setDisplaySize(edgeWidth + 2, height + 2).setVisible(true);
@@ -487,7 +492,7 @@ export class ArenaSystem {
   }
 
   createBoundaryColliders() {
-    const { x, y, width, height } = this.bounds;
+    const { x, y, width, height } = this.combatBounds;
     const thickness = 28;
     [
       { x: x + width / 2, y: y - thickness / 2, width, height: thickness },
@@ -511,7 +516,7 @@ export class ArenaSystem {
   }
 
   isInsidePlayable(x, y, padding = 0) {
-    const bounds = this.streaming ? this.playableWorldBounds : this.bounds;
+    const bounds = this.streaming ? this.playableWorldBounds : this.combatBounds;
     return x >= bounds.x + padding
       && x <= bounds.x + bounds.width - padding
       && y >= bounds.y + padding
@@ -525,7 +530,7 @@ export class ArenaSystem {
   }
 
   clampPoint(x, y, padding = SAFE_PADDING) {
-    const bounds = this.bounds;
+    const bounds = this.combatBounds;
     return {
       x: Phaser.Math.Clamp(x, bounds.x + padding, bounds.x + bounds.width - padding),
       y: Phaser.Math.Clamp(y, bounds.y + padding, bounds.y + bounds.height - padding)
@@ -533,7 +538,7 @@ export class ArenaSystem {
   }
 
   clampToWorld(x, y, padding = SAFE_PADDING) {
-    const bounds = this.streaming ? this.playableWorldBounds : this.bounds;
+    const bounds = this.streaming ? this.playableWorldBounds : this.combatBounds;
     return {
       x: Phaser.Math.Clamp(x, bounds.x + padding, bounds.x + bounds.width - padding),
       y: Phaser.Math.Clamp(y, bounds.y + padding, bounds.y + bounds.height - padding)
@@ -541,7 +546,7 @@ export class ArenaSystem {
   }
 
   findSafePoint(channel = 'arena-point', padding = SAFE_PADDING) {
-    const bounds = this.bounds;
+    const bounds = this.combatBounds;
     for (let attempt = 0; attempt < 32; attempt += 1) {
       const point = {
         x: this.scene.rng.int(bounds.x + padding, bounds.x + bounds.width - padding, channel),
@@ -594,9 +599,9 @@ export class ArenaSystem {
   applyObstacleDamageVisual(obstacle) {
     obstacle.sprite.clearTint().setAlpha(1);
     if (obstacle.damageStage === 1) {
-      obstacle.sprite.setTint(0xffc985).setAlpha(0.94);
+      obstacle.sprite.setTint(0xffc985);
     } else if (obstacle.damageStage >= 2) {
-      obstacle.sprite.setTint(0xe66d42).setAlpha(0.86);
+      obstacle.sprite.setTint(0xe66d42);
     }
   }
 
@@ -607,6 +612,7 @@ export class ArenaSystem {
       name: this.definition.name,
       topology: this.definition.topology,
       bounds: { ...this.bounds },
+      combatBounds: { ...this.combatBounds },
       worldBounds: { ...this.worldBounds },
       playableWorldBounds: { ...this.playableWorldBounds },
       streaming: Boolean(this.streaming),
@@ -653,6 +659,7 @@ export class ArenaSystem {
         damageStage: obstacle.damageStage ?? 0,
         hp: Number.isFinite(obstacle.hp) ? Math.max(0, obstacle.hp) : null,
         maxHp: Number.isFinite(obstacle.maxHp) ? obstacle.maxHp : null,
+        alpha: obstacle.sprite.alpha,
         active: obstacle.sprite.active
       }))
     };

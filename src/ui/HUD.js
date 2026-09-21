@@ -93,6 +93,20 @@ const ICON_ALIASES_BY_ID = {
   'primary-storm': 'lightning-comb'
 };
 
+function keepFocusInDialog(event, dialog) {
+  if (event.key !== 'Tab') return;
+  const focusable = [...dialog.querySelectorAll(
+    'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [href]'
+  )].filter((element) => element.tabIndex >= 0);
+  if (!focusable.length) return;
+  const activeIndex = focusable.indexOf(document.activeElement);
+  const nextIndex = event.shiftKey
+    ? (activeIndex <= 0 ? focusable.length - 1 : activeIndex - 1)
+    : (activeIndex >= focusable.length - 1 ? 0 : activeIndex + 1);
+  event.preventDefault();
+  focusable[nextIndex].focus();
+}
+
 export class HUD {
   constructor(onUpgradeSelected, onRestart, onFullscreen, onRoosterSelected, onReroll, onSettings, onAnalyticsConsent, onTalentPurchased) {
     this.onUpgradeSelected = onUpgradeSelected;
@@ -243,7 +257,7 @@ export class HUD {
         : 'Choose an upgrade.';
     this.setOverlayVisible(true);
     this.overlay.innerHTML = `
-      <div class="panel ${chest ? 'panel--reward' : ''}">
+      <div class="panel upgrade-panel ${chest ? 'panel--reward' : ''}">
         <h2>${title}</h2>
         <p>${subtitle}</p>
         ${context.recentChoice ? `
@@ -945,11 +959,22 @@ export class HUD {
   }
 
   showEndScreen(title, message, report = {}) {
+    window.clearTimeout(this.waveBannerTimeout);
+    window.clearTimeout(this.upgradeConfirmationTimeout);
+    this.waveBanner.classList.remove('is-visible');
+    this.upgradeConfirmation.classList.remove('is-visible');
+    this.multiKill?.classList.remove('is-visible');
+    this.waveBanner.replaceChildren();
+    this.upgradeConfirmation.replaceChildren();
+    this.waveBanner.hidden = true;
+    this.upgradeConfirmation.hidden = true;
+    this.root.hidden = true;
+    this.joystick.hidden = true;
     const sources = report.combatSources ?? [];
     const sourceRows = sources.length
       ? sources.slice(0, 10).map((source) => `
         <tr>
-          <td>${this.formatSource(source.source)}</td>
+          <td><span class="run-report__source"><i data-report-icon="${this.iconIdFromReportSource(source.source, report.rooster?.id)}"></i>${this.formatSource(source.source)}</span></td>
           <td>${Math.round(source.effectiveDamage)}</td>
           <td>${Math.round(source.damageShare * 100)}%</td>
           <td>${source.hitRate === null ? '–' : `${Math.round(source.hitRate * 100)}%`}</td>
@@ -960,10 +985,10 @@ export class HUD {
       : '<tr><td colspan="7">No combat data yet.</td></tr>';
     const build = report.build ?? { active: [], passive: [], evolutions: [] };
     const active = build.active
-      .map((entry) => `<span>${entry.name} ${entry.rank === 'EVO' ? 'EVO' : `R${entry.rank}`}</span>`)
+      .map((entry) => `<span><i data-report-icon="${this.iconIdFromLabel(entry.name) ?? 'active-upgrade'}"></i>${entry.name} ${entry.rank === 'EVO' ? 'EVO' : `R${entry.rank}`}</span>`)
       .join('');
     const passive = build.passive
-      .map((entry) => `<span>${entry.name} R${entry.rank}</span>`)
+      .map((entry) => `<span><i data-report-icon="${this.iconIdFromLabel(entry.name) ?? 'active-upgrade'}"></i>${entry.name} R${entry.rank}</span>`)
       .join('');
     const evos = build.evolutions.map((entry) => entry.name).join(', ') || 'None';
     const unlockLabels = {
@@ -973,25 +998,30 @@ export class HUD {
       mastery: 'Mastery',
       'first-clear': 'First clear'
     };
-    const unlocks = (report.newUnlocks ?? []).map((unlock) => `
-      <span><strong>${unlockLabels[unlock.type] ?? 'Progress'}</strong>${this.formatSource(unlock.id)}</span>
+    const unlocks = (report.newUnlocks ?? []).map((unlock, index) => `
+      <article class="run-report__unlock-card" data-unlock-type="${unlock.type}" style="--unlock-index:${index}">
+        <i data-report-icon="${this.iconIdFromUnlock(unlock)}"></i>
+        <span><small>${unlockLabels[unlock.type] ?? 'Progress'}</small><strong>${this.formatSource(unlock.id)}</strong></span>
+      </article>
     `).join('');
     const metaReward = report.metaReward;
+    const roosterPortrait = ROOSTER_PORTRAITS[report.rooster?.id] ?? ROOSTER_PORTRAITS.ace;
+    const arenaPreview = ARENA_PREVIEWS[report.arena?.id] ?? ARENA_PREVIEWS['open-yard'];
     this.setOverlayVisible(true);
     this.overlay.innerHTML = `
       <div class="panel run-report">
         <h1>${title}</h1>
         <p>${message}</p>
         <div class="run-report__summary">
-          <span><small>Rooster</small><strong>${report.rooster?.name ?? 'Unknown'}</strong></span>
-          <span><small>Arena</small><strong>${report.arena?.name ?? 'Unknown'}</strong></span>
-          <span><small>Mode</small><strong>${report.challenge?.name ?? 'Standard Run'}</strong></span>
-          <span><small>Time</small><strong>${this.formatDuration(report.elapsedMs ?? 0)}</strong></span>
-          <span><small>Kills</small><strong>${report.kills ?? 0}</strong></span>
-          <span><small>Hits</small><strong>${report.shots ? `${Math.round(Math.min(1, report.hits / report.shots) * 100)}%` : '–'}</strong></span>
-          <span><small>Peak</small><strong>${report.maxEnemiesAlive ?? 0}</strong></span>
-          <span><small>Death cause</small><strong>${this.formatSource(report.deathCause ?? '–')}</strong></span>
-          <span><small>EVOs</small><strong>${build.evolutions.length}</strong></span>
+          <span class="run-report__summary-card run-report__summary-card--portrait"><img src="${roosterPortrait}" alt=""><span><small>Rooster</small><strong>${report.rooster?.name ?? 'Unknown'}</strong></span></span>
+          <span class="run-report__summary-card run-report__summary-card--arena"><img src="${arenaPreview.url}" alt=""><span><small>Arena</small><strong>${report.arena?.name ?? 'Unknown'}</strong></span></span>
+          <span class="run-report__summary-card"><i data-report-icon="active-upgrade"></i><span><small>Mode</small><strong>${report.challenge?.name ?? 'Standard Run'}</strong></span></span>
+          <span class="run-report__summary-card"><i data-report-icon="timer"></i><span><small>Time</small><strong>${this.formatDuration(report.elapsedMs ?? 0)}</strong></span></span>
+          <span class="run-report__summary-card"><i data-report-icon="active-upgrade"></i><span><small>Kills</small><strong>${report.kills ?? 0}</strong></span></span>
+          <span class="run-report__summary-card"><i data-report-icon="double-shot"></i><span><small>Hits</small><strong>${report.shots ? `${Math.round(Math.min(1, report.hits / report.shots) * 100)}%` : '–'}</strong></span></span>
+          <span class="run-report__summary-card"><i data-report-icon="wave"></i><span><small>Peak</small><strong>${report.maxEnemiesAlive ?? 0}</strong></span></span>
+          <span class="run-report__summary-card"><i data-report-icon="hp"></i><span><small>Death cause</small><strong>${this.formatSource(report.deathCause ?? '–')}</strong></span></span>
+          <span class="run-report__summary-card"><i data-report-icon="evo-sunshot-array"></i><span><small>EVOs</small><strong>${build.evolutions.length}</strong></span></span>
         </div>
         <div class="run-report__build"><strong>Active</strong>${active || '<span>–</span>'}</div>
         <div class="run-report__build run-report__build--passive"><strong>Passive</strong>${passive || '<span>–</span>'}</div>
@@ -1001,7 +1031,13 @@ export class HUD {
           <span><strong>+${metaReward.earnedKernels} kernels</strong><small>Run ${metaReward.runKernels}${metaReward.firstClearKernels ? ` · First clear ${metaReward.firstClearKernels}` : ''}${metaReward.masteryKernels ? ` · Mastery ${metaReward.masteryKernels}` : ''} · Balance ${metaReward.balance}</small></span>
           <b>Mastery ${metaReward.masteryLevel} · +${metaReward.masteryXp} XP</b>
         </div>` : ''}
-        ${unlocks ? `<div class="run-report__unlocks"><h2>Newly unlocked</h2>${unlocks}</div>` : ''}
+        ${unlocks ? `<section class="run-report__unlocks" aria-live="polite">
+          <header class="run-report__unlocks-heading">
+            <i data-report-icon="badge-5"></i>
+            <span><small>RUN REWARDS</small><h2>Newly unlocked</h2><p>Ready to use in the Henhouse</p></span>
+          </header>
+          ${unlocks}
+        </section>` : ''}
         <div class="run-report__table-wrap">
           <table>
             <thead><tr><th>Source</th><th>Damage</th><th>Share</th><th>Hits</th><th>Kills</th><th>Overkill</th><th>Active</th></tr></thead>
@@ -1012,6 +1048,7 @@ export class HUD {
       </div>
     `;
     this.setIcon(this.overlay.querySelector('[data-restart-icon]'), 'restart');
+    this.overlay.querySelectorAll('[data-report-icon]').forEach((icon) => this.setIcon(icon, icon.dataset.reportIcon));
     this.overlay.querySelector('button').addEventListener('click', this.onRestart);
   }
 
@@ -1040,41 +1077,68 @@ export class HUD {
     };
     this.setOverlayVisible(true);
     this.overlay.innerHTML = `
-      <div class="panel settings-panel">
-        <h2>Settings</h2>
+      <div class="panel settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" tabindex="-1">
+        <h2 id="settings-title">Settings</h2>
         <p>Adjust visuals and audio independently.</p>
-        <h3>Visuals</h3>
-        <div class="settings-list">
-          ${Object.entries(labels).map(([key, label]) => `
-            <button type="button" data-effect="${key}" aria-pressed="${effectSettings[key]}">
-              <span>${label}</span><strong>${effectSettings[key] ? 'ON' : 'OFF'}</strong>
-            </button>`).join('')}
-          <button type="button" data-settings-fullscreen>
-            <span>Fullscreen</span><strong>TOGGLE</strong>
-          </button>
+        <div class="settings-content">
+          <section class="settings-section">
+            <h3>Visuals</h3>
+            <div class="settings-list">
+              ${Object.entries(labels).map(([key, label]) => `
+                <button type="button" data-effect="${key}" aria-pressed="${effectSettings[key]}">
+                  <span>${label}</span><strong>${effectSettings[key] ? 'ON' : 'OFF'}</strong>
+                </button>`).join('')}
+              <button type="button" data-settings-fullscreen>
+                <span>Fullscreen</span><strong>TOGGLE</strong>
+              </button>
+            </div>
+          </section>
+          <section class="settings-section">
+            <h3>Audio</h3>
+            <div class="settings-list settings-list--audio">
+              ${Object.entries(audioLabels).map(([key, label]) => `
+                <label class="settings-volume">
+                  <span>${label}</span>
+                  <input type="range" min="0" max="1" step="0.05" value="${audioSettings[key]}"
+                    data-audio-volume="${key}" aria-label="${label} volume">
+                  <strong>${Math.round(audioSettings[key] * 100)}%</strong>
+                </label>`).join('')}
+            </div>
+          </section>
+          <section class="settings-section settings-section--privacy">
+            <h3>Privacy</h3>
+            <div class="settings-privacy">
+              <span><strong>Anonymous gameplay analytics</strong><small>Records only run flow and key metrics. No accounts, cookies, or advertising IDs.</small></span>
+              <button type="button" data-analytics-toggle aria-pressed="${Boolean(analyticsSettings?.enabled)}">${analyticsSettings?.enabled ? 'ON' : 'OFF'}</button>
+            </div>
+          </section>
         </div>
-        <h3>Audio</h3>
-        <div class="settings-list settings-list--audio">
-          ${Object.entries(audioLabels).map(([key, label]) => `
-            <label class="settings-volume">
-              <span>${label}</span>
-              <input type="range" min="0" max="1" step="0.05" value="${audioSettings[key]}"
-                data-audio-volume="${key}" aria-label="${label} volume">
-              <strong>${Math.round(audioSettings[key] * 100)}%</strong>
-            </label>`).join('')}
+        <div class="settings-actions">
+          ${onReturnToHub ? `
+            <div class="settings-run-exit">
+              <span><strong>Current run</strong><small>Leave combat and return to the Henhouse.</small></span>
+              <button type="button" data-return-hub>Main menu</button>
+            </div>` : ''}
+          <button class="settings-close" type="button">Continue</button>
         </div>
-        <h3>Privacy</h3>
-        <div class="settings-privacy">
-          <span><strong>Anonymous gameplay analytics</strong><small>Records only run flow and key metrics. No accounts, cookies, or advertising IDs.</small></span>
-          <button type="button" data-analytics-toggle aria-pressed="${Boolean(analyticsSettings?.enabled)}">${analyticsSettings?.enabled ? 'ON' : 'OFF'}</button>
-        </div>
-        ${onReturnToHub ? `
-          <div class="settings-run-exit">
-            <span><strong>Current run</strong><small>Leave combat and return to the Henhouse.</small></span>
-            <button type="button" data-return-hub>Main menu</button>
-          </div>` : ''}
-        <button class="settings-close" type="button">Continue</button>
       </div>`;
+    const panel = this.overlay.querySelector('.settings-panel');
+    let closed = false;
+    const closeSettings = () => {
+      if (closed) return;
+      closed = true;
+      this.overlay.onkeydown = null;
+      onClose?.();
+    };
+    this.overlay.onkeydown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeSettings();
+        return;
+      }
+      keepFocusInDialog(event, panel);
+    };
+    requestAnimationFrame(() => panel.focus({ preventScroll: true }));
     this.overlay.querySelectorAll('[data-effect]').forEach((button) => {
       button.addEventListener('click', () => {
         const next = onEffectToggle?.(button.dataset.effect) ?? effectSettings;
@@ -1097,13 +1161,13 @@ export class HUD {
       button.textContent = state.enabled ? 'ON' : 'OFF';
     });
     this.overlay.querySelector('[data-return-hub]')?.addEventListener('click', () => onReturnToHub?.());
-    this.overlay.querySelector('.settings-close').addEventListener('click', () => onClose?.(), { once: true });
+    this.overlay.querySelector('.settings-close').addEventListener('click', closeSettings, { once: true });
   }
 
   showReturnToHubConfirmation(onConfirm, onCancel) {
     this.setOverlayVisible(true);
     this.overlay.innerHTML = `
-      <div class="panel return-hub-panel" role="dialog" aria-modal="true" aria-labelledby="return-hub-title">
+      <div class="panel return-hub-panel" role="dialog" aria-modal="true" aria-labelledby="return-hub-title" tabindex="-1">
         <small>CURRENT RUN</small>
         <h2 id="return-hub-title">Return to the Henhouse?</h2>
         <p>The current run will end without granting a completion reward.</p>
@@ -1112,8 +1176,34 @@ export class HUD {
           <button type="button" class="is-danger" data-return-confirm>Leave run</button>
         </div>
       </div>`;
-    this.overlay.querySelector('[data-return-cancel]')?.addEventListener('click', () => onCancel?.(), { once: true });
+    const panel = this.overlay.querySelector('.return-hub-panel');
+    const cancel = () => {
+      this.overlay.onkeydown = null;
+      onCancel?.();
+    };
+    this.overlay.onkeydown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        cancel();
+        return;
+      }
+      keepFocusInDialog(event, panel);
+    };
+    requestAnimationFrame(() => panel.focus({ preventScroll: true }));
+    this.overlay.querySelector('[data-return-cancel]')?.addEventListener('click', cancel, { once: true });
     this.overlay.querySelector('[data-return-confirm]')?.addEventListener('click', () => onConfirm?.(), { once: true });
+  }
+
+  showFocusPause(onResume) {
+    this.setOverlayVisible(true);
+    this.overlay.innerHTML = `
+      <div class="panel focus-pause-panel" role="dialog" aria-modal="true" aria-labelledby="focus-pause-title">
+        <small>RUN PAUSED</small>
+        <h2 id="focus-pause-title">Welcome back</h2>
+        <p>Combat stopped while the game was out of focus.</p>
+        <button type="button" data-focus-resume>Continue</button>
+      </div>`;
+    this.overlay.querySelector('[data-focus-resume]')?.addEventListener('click', () => onResume?.(), { once: true });
   }
 
   hideOverlay() {
@@ -1130,8 +1220,17 @@ export class HUD {
     this.showEncounterBanner(`Wave ${wave}: ${config.name}`, config.intent ?? '', config.bossWave ? 'boss' : 'wave');
   }
 
+  showArenaBanner(arenaName, challengeName, waveConfig) {
+    this.showEncounterBanner(
+      arenaName,
+      `${challengeName} · Wave 1: ${waveConfig.name}`,
+      'arena'
+    );
+  }
+
   showEncounterBanner(title, subtitle = '', tier = 'elite') {
     window.clearTimeout(this.waveBannerTimeout);
+    this.waveBanner.hidden = false;
     this.waveBanner.className = `wave-banner wave-banner--${tier}`;
     this.waveBanner.innerHTML = `<strong>${title}</strong>${subtitle ? `<small>${subtitle}</small>` : ''}`;
     this.waveBanner.classList.remove('is-visible');
@@ -1289,6 +1388,7 @@ export class HUD {
     if (!upgrade || !this.upgradeConfirmation) {
       return;
     }
+    this.upgradeConfirmation.hidden = false;
     const rank = upgrade.evolution
       ? 'EVO'
       : upgrade.consumable
@@ -1387,6 +1487,22 @@ export class HUD {
   iconIdFromLabel(label) {
     const clean = label.replace(/\s+\d+$/, '');
     return ICON_IDS_BY_NAME[clean] ?? null;
+  }
+
+  iconIdFromReportSource(source, roosterId) {
+    if (source === 'base-egg') return `primary-${roosterId ?? 'ace'}`;
+    if (source === 'pickup') return 'heal';
+    if (source === 'molotov-burn') return 'molotov-egg';
+    return source;
+  }
+
+  iconIdFromUnlock(unlock) {
+    if (unlock.type === 'rooster') return `primary-${unlock.id}`;
+    if (unlock.type === 'cosmetic') return `primary-${String(unlock.id).split('-')[0]}`;
+    if (unlock.type === 'mastery') return `badge-${Math.min(5, Math.max(1, unlock.level ?? 5))}`;
+    if (unlock.type === 'challenge') return 'badge-3';
+    if (unlock.type === 'first-clear') return 'badge-1';
+    return 'golden-egg';
   }
 
   setIcon(element, id) {

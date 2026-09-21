@@ -28,6 +28,7 @@ export class Telemetry {
   reset() {
     this.events = [];
     this.waveStats = new Map();
+    this.segmentStats = new Map();
     this.enemyLifetimes = new Map();
     this.frameSamples = [];
     this.progressionChoices = [];
@@ -61,6 +62,8 @@ export class Telemetry {
       enemyAttacksDeferred: 0,
       deathCause: null,
       xpCollected: 0,
+      xpSpawned: 0,
+      xpOrbsRemoved: 0,
       levelUps: 0,
       upgradeOffers: 0,
       upgradeChoices: 0,
@@ -73,6 +76,26 @@ export class Telemetry {
       pickupsSpawnedByKind: {},
       pickupsCollectedByKind: {},
       maxEnemiesAlive: 0,
+      enemyPopulationSamples: 0,
+      enemyPopulationTotal: 0,
+      visibleEnemyTotal: 0,
+      targetableEnemyTotal: 0,
+      targetableOffscreenTotal: 0,
+      maxVisibleEnemies: 0,
+      maxTargetableEnemies: 0,
+      zeroVisibleMs: 0,
+      totalZeroVisibleMs: 0,
+      maxZeroVisibleMs: 0,
+      zeroVisibleStartedAt: null,
+      zeroVisibleWindows: [],
+      offscreenKills: 0,
+      firstVisibleSamples: 0,
+      spawnToFirstVisibleTotalMs: 0,
+      combatPressureSamples: 0,
+      combatPressureTotal: 0,
+      maxScheduleDebt: 0,
+      adaptiveSpawnAdvances: 0,
+      adaptiveSpawnAdvanceMs: 0,
       peakMicroFodder: 0,
       peakSpecialEnemies: 0,
       maxProjectilesAlive: 0,
@@ -123,10 +146,32 @@ export class Telemetry {
         damageDealt: 0,
         damageTaken: 0,
         xpCollected: 0,
+        xpSpawned: 0,
+        xpOrbsRemoved: 0,
         levelUps: 0,
         upgradeOffers: 0,
         upgradeChoices: 0,
         maxEnemiesAlive: 0,
+        enemyPopulationSamples: 0,
+        enemyPopulationTotal: 0,
+        visibleEnemyTotal: 0,
+        targetableEnemyTotal: 0,
+        targetableOffscreenTotal: 0,
+        maxVisibleEnemies: 0,
+        maxTargetableEnemies: 0,
+        zeroVisibleMs: 0,
+        totalZeroVisibleMs: 0,
+        maxZeroVisibleMs: 0,
+        zeroVisibleStartedAt: null,
+        zeroVisibleWindows: [],
+        offscreenKills: 0,
+        firstVisibleSamples: 0,
+        spawnToFirstVisibleTotalMs: 0,
+        combatPressureSamples: 0,
+        combatPressureTotal: 0,
+        maxScheduleDebt: 0,
+        adaptiveSpawnAdvances: 0,
+        adaptiveSpawnAdvanceMs: 0,
         peakMicroFodder: 0,
         peakSpecialEnemies: 0,
         enemyProjectileSamples: 0,
@@ -145,6 +190,11 @@ export class Telemetry {
       return;
     }
     if (type === 'waveCompleted') {
+      // Sampling may have already advanced to the next wave by the time a
+      // report is read. Close the old wave's visibility interval here so its
+      // maximum cannot inherit time from a later wave.
+      this.closeZeroVisibleWindow(stat, time);
+      stat.zeroVisibleMs = 0;
       stat.endedAt = time;
       stat.durationMs = time - stat.startedAt;
       stat.outcome = 'completed';
@@ -156,11 +206,24 @@ export class Telemetry {
     if (type === 'damageDealt') stat.damageDealt += payload.effective ?? payload.amount ?? 0;
     if (type === 'playerDamaged') stat.damageTaken += payload.amount ?? 0;
     if (type === 'xpCollected') stat.xpCollected += payload.amount ?? 0;
+    if (type === 'xpSpawned') stat.xpSpawned += payload.amount ?? 0;
+    if (type === 'xpOrbRemoved') stat.xpOrbsRemoved += payload.amount ?? 0;
     if (type === 'levelUp') stat.levelUps += 1;
     if (type === 'upgradeOffered' && payload.selectionType === 'level') stat.upgradeOffers += 1;
     if (type === 'upgradeChosen' && payload.selectionType === 'level') stat.upgradeChoices += 1;
     if (type === 'enemyAbilityDeferred') {
       this.summary.enemyAttacksDeferred += 1;
+    }
+    if (type === 'adaptivePulseAdvanced') {
+      this.summary.adaptiveSpawnAdvances += 1;
+      this.summary.adaptiveSpawnAdvanceMs += payload.pulledMs ?? 0;
+      const segment = this.getSegmentStat(wave, payload.segment ?? 'unknown');
+      segment.adaptiveAdvances += 1;
+      segment.adaptiveAdvanceMs += payload.pulledMs ?? 0;
+      if (stat) {
+        stat.adaptiveSpawnAdvances += 1;
+        stat.adaptiveSpawnAdvanceMs += payload.pulledMs ?? 0;
+      }
     }
   }
 
@@ -178,6 +241,26 @@ export class Telemetry {
       this.frameSamples.push(delta);
     }
     this.summary.maxEnemiesAlive = Math.max(this.summary.maxEnemiesAlive, state.enemiesAlive);
+    const visibleEnemies = state.visibleEnemies ?? state.enemiesAlive;
+    const targetableEnemies = state.targetableEnemies ?? visibleEnemies;
+    const targetableOffscreenEnemies = Math.max(0, targetableEnemies - visibleEnemies);
+    const director = state.spawnDirector ?? {};
+    const visiblePressure = director.pressure?.weightedVisible ?? 0;
+    const scheduleDebt = director.pressure?.scheduleDebt ?? director.maxScheduleDebt ?? 0;
+    this.summary.enemyPopulationSamples += 1;
+    this.summary.enemyPopulationTotal += state.enemiesAlive;
+    this.summary.visibleEnemyTotal += visibleEnemies;
+    this.summary.targetableEnemyTotal += targetableEnemies;
+    this.summary.targetableOffscreenTotal += targetableOffscreenEnemies;
+    this.summary.maxVisibleEnemies = Math.max(this.summary.maxVisibleEnemies, visibleEnemies);
+    this.summary.maxTargetableEnemies = Math.max(this.summary.maxTargetableEnemies, targetableEnemies);
+    this.summary.combatPressureSamples += 1;
+    this.summary.combatPressureTotal += visiblePressure;
+    this.summary.maxScheduleDebt = Math.max(this.summary.maxScheduleDebt, scheduleDebt);
+    (state.visibleEnemyIds ?? []).forEach((id) => {
+      const lifetime = this.enemyLifetimes.get(id);
+      if (lifetime && lifetime.firstVisibleAt === undefined) lifetime.firstVisibleAt = time;
+    });
     this.summary.peakMicroFodder = Math.max(this.summary.peakMicroFodder, state.microFodderAlive ?? 0);
     this.summary.peakSpecialEnemies = Math.max(this.summary.peakSpecialEnemies, state.specialEnemiesAlive ?? 0);
     this.summary.maxProjectilesAlive = Math.max(this.summary.maxProjectilesAlive, state.projectilesAlive);
@@ -206,6 +289,16 @@ export class Telemetry {
     const stat = this.waveStats.get(state.wave);
     if (stat) {
       stat.maxEnemiesAlive = Math.max(stat.maxEnemiesAlive, state.enemiesAlive);
+      stat.enemyPopulationSamples += 1;
+      stat.enemyPopulationTotal += state.enemiesAlive;
+      stat.visibleEnemyTotal += visibleEnemies;
+      stat.targetableEnemyTotal += targetableEnemies;
+      stat.targetableOffscreenTotal += targetableOffscreenEnemies;
+      stat.maxVisibleEnemies = Math.max(stat.maxVisibleEnemies, visibleEnemies);
+      stat.maxTargetableEnemies = Math.max(stat.maxTargetableEnemies, targetableEnemies);
+      stat.combatPressureSamples += 1;
+      stat.combatPressureTotal += visiblePressure;
+      stat.maxScheduleDebt = Math.max(stat.maxScheduleDebt, scheduleDebt);
       stat.peakMicroFodder = Math.max(stat.peakMicroFodder, state.microFodderAlive ?? 0);
       stat.peakSpecialEnemies = Math.max(stat.peakSpecialEnemies, state.specialEnemiesAlive ?? 0);
       stat.enemyProjectileSamples += 1;
@@ -225,6 +318,26 @@ export class Telemetry {
       this.summary.idleMs = 0;
     }
 
+    if (state.enemiesAlive > 0 && visibleEnemies === 0) {
+      this.summary.zeroVisibleStartedAt ??= time;
+      this.summary.zeroVisibleMs += delta;
+      this.summary.totalZeroVisibleMs += delta;
+      this.summary.maxZeroVisibleMs = Math.max(this.summary.maxZeroVisibleMs, this.summary.zeroVisibleMs);
+      if (stat) {
+        stat.zeroVisibleStartedAt ??= time;
+        stat.zeroVisibleMs += delta;
+        stat.totalZeroVisibleMs += delta;
+        stat.maxZeroVisibleMs = Math.max(stat.maxZeroVisibleMs, stat.zeroVisibleMs);
+      }
+    } else {
+      this.closeZeroVisibleWindow(this.summary, time);
+      this.summary.zeroVisibleMs = 0;
+      if (stat) {
+        this.closeZeroVisibleWindow(stat, time);
+        stat.zeroVisibleMs = 0;
+      }
+    }
+
     if (state.nearestEnemyDistance < 120 || state.hpRatio < 0.45) {
       this.summary.dangerMs += delta;
       this.summary.maxDangerMs = Math.max(this.summary.maxDangerMs, this.summary.dangerMs);
@@ -233,15 +346,29 @@ export class Telemetry {
     }
   }
 
-  addEnemySpawn(enemy, time, wave) {
+  addEnemySpawn(enemy, time, wave, segment = 'unknown') {
     this.summary.enemiesSpawned += 1;
     this.enemyLifetimes.set(enemy.id, {
       id: enemy.id,
       type: enemy.type,
       spawnedAt: time,
-      maxHp: enemy.maxHp
+      maxHp: enemy.maxHp,
+      wave,
+      segment
     });
-    this.record('enemySpawned', time, { wave, id: enemy.id, enemyType: enemy.type });
+    this.record('enemySpawned', time, { wave, id: enemy.id, enemyType: enemy.type, segment });
+    const stat = this.getSegmentStat(wave, segment);
+    stat.enemiesSpawned += 1;
+    stat.firstSpawnAt ??= time;
+    stat.lastSpawnAt = time;
+    if (stat.lastPulseAt !== time) {
+      if (stat.lastPulseAt !== null) {
+        stat.pulseIntervalTotalMs += time - stat.lastPulseAt;
+        stat.pulseIntervals += 1;
+      }
+      stat.pulses += 1;
+      stat.lastPulseAt = time;
+    }
   }
 
   addShot(count, time, wave, source = 'base-egg') {
@@ -286,6 +413,22 @@ export class Telemetry {
       ? Math.max(0, time - (lifetime.firstDamageAt ?? lifetime.spawnedAt))
       : null;
     if (lifetime) {
+      const stat = this.waveStats.get(lifetime.wave);
+      const segmentStat = this.getSegmentStat(lifetime.wave, lifetime.segment);
+      segmentStat.kills += 1;
+      segmentStat.lastKillAt = time;
+      if (lifetime.firstVisibleAt === undefined) {
+        this.summary.offscreenKills += 1;
+        if (stat) stat.offscreenKills += 1;
+      } else {
+        const spawnToFirstVisibleMs = Math.max(0, lifetime.firstVisibleAt - lifetime.spawnedAt);
+        this.summary.firstVisibleSamples += 1;
+        this.summary.spawnToFirstVisibleTotalMs += spawnToFirstVisibleMs;
+        if (stat) {
+          stat.firstVisibleSamples += 1;
+          stat.spawnToFirstVisibleTotalMs += spawnToFirstVisibleMs;
+        }
+      }
       this.enemyLifetimes.delete(enemyId);
     }
     this.record('enemyKilled', time, { wave, enemyType: type, enemyId, source, ttkMs });
@@ -314,6 +457,16 @@ export class Telemetry {
   addXp(amount, time, wave) {
     this.summary.xpCollected += amount;
     this.record('xpCollected', time, { amount, wave });
+  }
+
+  addXpSpawned(amount, time, wave) {
+    this.summary.xpSpawned += amount;
+    this.record('xpSpawned', time, { amount, wave });
+  }
+
+  addXpOrbRemoved(amount, time, wave) {
+    this.summary.xpOrbsRemoved += amount;
+    this.record('xpOrbRemoved', time, { amount, wave });
   }
 
   addLevelUp(time, wave, level) {
@@ -375,6 +528,39 @@ export class Telemetry {
     return Math.max(...this.waveStats.keys());
   }
 
+  closeZeroVisibleWindow(stats, time) {
+    if (stats.zeroVisibleStartedAt === null) return;
+    const durationMs = Math.max(0, time - stats.zeroVisibleStartedAt);
+    if (durationMs > 0) {
+      stats.zeroVisibleWindows.push({ startedAt: stats.zeroVisibleStartedAt, durationMs });
+      if (stats.zeroVisibleWindows.length > 12) stats.zeroVisibleWindows.shift();
+    }
+    stats.zeroVisibleStartedAt = null;
+  }
+
+  getSegmentStat(wave, segment) {
+    const key = `${wave}:${segment}`;
+    const existing = this.segmentStats.get(key);
+    if (existing) return existing;
+    const stat = {
+      wave,
+      segment,
+      enemiesSpawned: 0,
+      kills: 0,
+      pulses: 0,
+      pulseIntervals: 0,
+      pulseIntervalTotalMs: 0,
+      firstSpawnAt: null,
+      lastSpawnAt: null,
+      lastPulseAt: null,
+      lastKillAt: null,
+      adaptiveAdvances: 0,
+      adaptiveAdvanceMs: 0
+    };
+    this.segmentStats.set(key, stat);
+    return stat;
+  }
+
   getFrameStats() {
     const total = this.frameSamples.reduce((sum, value) => sum + value, 0);
     return {
@@ -411,6 +597,10 @@ export class Telemetry {
     const regularChoices = this.progressionChoices;
     const choiceTimes = regularChoices.map((event) => Math.max(0, event.time - this.summary.startedAt));
     const intervalsMs = choiceTimes.slice(1).map((time, index) => time - choiceTimes[index]);
+    const sortedIntervals = [...intervalsMs].sort((left, right) => left - right);
+    const percentileInterval = (ratio) => sortedIntervals.length
+      ? sortedIntervals[Math.min(sortedIntervals.length - 1, Math.floor(sortedIntervals.length * ratio))]
+      : null;
     const spectacular = regularChoices.find((event) => (
       ['active', 'orbit', 'summon'].includes(event.category)
     ));
@@ -439,6 +629,8 @@ export class Telemetry {
       averageIntervalMs: intervalsMs.length
         ? intervalsMs.reduce((sum, value) => sum + value, 0) / intervalsMs.length
         : null,
+      medianIntervalMs: percentileInterval(0.5),
+      p90IntervalMs: percentileInterval(0.9),
       minIntervalMs: intervalsMs.length ? Math.min(...intervalsMs) : null,
       maxIntervalMs: intervalsMs.length ? Math.max(...intervalsMs) : null,
       totalPauseMs,
@@ -498,14 +690,56 @@ export class Telemetry {
 
   getSummary(now = 0) {
     const elapsedMs = Math.max(1, (this.summary.endedAt ?? now) - this.summary.startedAt);
+    const visibility = (stats) => ({
+      averageAlive: stats.enemyPopulationSamples > 0 ? stats.enemyPopulationTotal / stats.enemyPopulationSamples : 0,
+      averageVisible: stats.enemyPopulationSamples > 0 ? stats.visibleEnemyTotal / stats.enemyPopulationSamples : 0,
+      averageTargetable: stats.enemyPopulationSamples > 0 ? stats.targetableEnemyTotal / stats.enemyPopulationSamples : 0,
+      averageTargetableOffscreen: stats.enemyPopulationSamples > 0
+        ? stats.targetableOffscreenTotal / stats.enemyPopulationSamples
+        : 0,
+      maxVisible: stats.maxVisibleEnemies,
+      maxTargetable: stats.maxTargetableEnemies,
+      totalZeroVisibleMs: stats.totalZeroVisibleMs,
+      maxZeroVisibleMs: stats.maxZeroVisibleMs,
+      zeroVisibleWindows: stats.zeroVisibleWindows.map((window) => ({ ...window })),
+      offscreenKills: stats.offscreenKills,
+      averageSpawnToFirstVisibleMs: stats.firstVisibleSamples > 0
+        ? stats.spawnToFirstVisibleTotalMs / stats.firstVisibleSamples
+        : null,
+      averageVisiblePressure: stats.combatPressureSamples > 0
+        ? stats.combatPressureTotal / stats.combatPressureSamples
+        : 0,
+      maxScheduleDebt: stats.maxScheduleDebt
+    });
     const waveStats = Array.from(this.waveStats.values()).map((wave) => ({
       ...wave,
       averageEnemyProjectiles: wave.enemyProjectileSamples > 0
         ? wave.enemyProjectileTotal / wave.enemyProjectileSamples
         : 0,
       peakObjects: cloneObjectStats(wave.peakObjects),
+      visibility: visibility(wave),
       durationMs: wave.durationMs ?? (wave.startedAt ? now - wave.startedAt : null)
     }));
+    const segments = Array.from(this.segmentStats.values()).map((segment) => {
+      const activeUntil = segment.lastKillAt ?? segment.lastSpawnAt ?? segment.firstSpawnAt;
+      const activeMs = activeUntil === null || segment.firstSpawnAt === null
+        ? 0
+        : Math.max(0, activeUntil - segment.firstSpawnAt);
+      return {
+        wave: segment.wave,
+        segment: segment.segment,
+        enemiesSpawned: segment.enemiesSpawned,
+        kills: segment.kills,
+        pulses: segment.pulses,
+        effectiveSpawnCadenceMs: segment.pulseIntervals > 0
+          ? segment.pulseIntervalTotalMs / segment.pulseIntervals
+          : null,
+        killsPerSecond: activeMs > 0 ? segment.kills / (activeMs / 1000) : null,
+        adaptiveAdvances: segment.adaptiveAdvances,
+        adaptiveAdvanceMs: segment.adaptiveAdvanceMs,
+        activeMs
+      };
+    });
     return {
       ...this.summary,
       damageBySource: cloneObjectStats(this.summary.damageBySource),
@@ -521,6 +755,13 @@ export class Telemetry {
         ? this.summary.enemyProjectileTotal / this.summary.enemyProjectileSamples
         : 0,
       averagePlayerSpeed: this.summary.playerDistanceTravelled / (elapsedMs / 1000),
+      adaptive: {
+        enabled: this.summary.adaptiveSpawnsEnabled ?? true,
+        spawnAdvances: this.summary.adaptiveSpawnAdvances,
+        totalAdvanceMs: this.summary.adaptiveSpawnAdvanceMs,
+        maxScheduleDebt: this.summary.maxScheduleDebt
+      },
+      visibility: visibility(this.summary),
       peakObjects: cloneObjectStats(this.summary.peakObjects),
       frameTimes: this.getFrameStats(),
       ttkByEnemyType: this.getTtkStats(),
@@ -528,6 +769,7 @@ export class Telemetry {
       combatSources: this.getCombatSourceReport(),
       elapsedMs,
       waves: waveStats,
+      segments,
       eventCount: this.events.length
     };
   }

@@ -299,8 +299,11 @@ async function run() {
         || !result.analysis.pacingOk
         || result.analysis.completedWaves !== 10
         || !Number.isFinite(firstUpgradeAtMs)
-        || firstUpgradeAtMs < 18000
-        || firstUpgradeAtMs > 32000;
+        || firstUpgradeAtMs < 25000
+        || firstUpgradeAtMs > 35000
+        || (result.summary.progression?.medianIntervalMs ?? Infinity) < 35000
+        || (result.summary.progression?.medianIntervalMs ?? 0) > 50000
+        || (result.summary.progression?.p90IntervalMs ?? Infinity) > 70000;
     });
     if (runtimeFailure || strictFailure) {
       process.exitCode = 1;

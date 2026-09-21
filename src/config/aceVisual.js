@@ -4,7 +4,8 @@
 // The previous Next and Gameplay generations also remain reversible via
 // ?roosterVisual=next or ?roosterVisual=gameplay and the matching
 // per-character parameters.
-const parameters = typeof window === 'undefined'
+const allowVisualOverrides = import.meta.env?.DEV ?? true;
+const parameters = !allowVisualOverrides || typeof window === 'undefined'
   ? new URLSearchParams()
   : new URLSearchParams(window.location.search);
 const globalVersion = parameters.get('roosterVisual');

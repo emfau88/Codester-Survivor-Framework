@@ -99,6 +99,27 @@ async function testTelemetryAndLoad(browser) {
     assert(damageProbe.killsBySource['test-api'] === 1, 'Kill source telemetry is incorrect.', damageProbe);
     assert(damageProbe.ttkByEnemyType.slime?.count === 1, 'TTK telemetry is missing.', damageProbe);
 
+    const cameraSpawnProbe = await page.evaluate(() => {
+      window.__ROOSTER_TEST__.clearEnemies();
+      const spawns = Array.from({ length: 8 }, () => window.__ROOSTER_TEST__.spawnSafeEnemyType());
+      const targetState = window.__ROOSTER_TEST__.getTargetAcquisitionState();
+      return { bounds: targetState.bounds, targetableIds: targetState.targetableIds, spawns };
+    });
+    const isVisible = (spawn) => (
+      spawn.x >= cameraSpawnProbe.bounds.visibleX
+      && spawn.x <= cameraSpawnProbe.bounds.visibleX + cameraSpawnProbe.bounds.visibleWidth
+      && spawn.y >= cameraSpawnProbe.bounds.visibleY
+      && spawn.y <= cameraSpawnProbe.bounds.visibleY + cameraSpawnProbe.bounds.visibleHeight
+    );
+    assert(cameraSpawnProbe.spawns.every(Boolean), 'Camera spawn probe did not create every enemy.', cameraSpawnProbe);
+    assert(cameraSpawnProbe.spawns.every((spawn) => spawn.distance >= 280),
+      'Camera spawn probe violated the minimum player distance.', cameraSpawnProbe);
+    assert(cameraSpawnProbe.spawns.every((spawn) => !isVisible(spawn)),
+      'Camera spawn probe placed an enemy inside the visible camera viewport.', cameraSpawnProbe);
+    assert(cameraSpawnProbe.targetableIds.length === 0,
+      'Camera spawn probe created an immediately targetable offscreen enemy.', cameraSpawnProbe);
+    await page.evaluate(() => window.__ROOSTER_TEST__.clearEnemies());
+
     const fxBudget = await page.evaluate(() => window.__ROOSTER_TEST__.exerciseFxBudget(140));
     assert(fxBudget.saturated.active === fxBudget.saturated.limit, 'FX budget did not saturate at its limit.', fxBudget);
     assert(fxBudget.saturated.dropped === 50, 'FX budget did not count dropped effects.', fxBudget);
@@ -112,6 +133,13 @@ async function testTelemetryAndLoad(browser) {
     assert(!loadedState.lastError && errors.length === 0, 'Load scenario produced runtime errors.', { loadedState, errors });
     assert(loadedState.telemetry.peakObjects.enemies >= 100, 'Enemy peak telemetry missed the load scenario.', loadedState.telemetry);
     assert(loadedState.telemetry.peakObjects.projectiles >= 200, 'Projectile peak telemetry missed the load scenario.', loadedState.telemetry);
+    assert(Number.isFinite(loadedState.telemetry.visibility?.averageVisible),
+      'Visible-enemy telemetry is missing.', loadedState.telemetry);
+    assert(loadedState.telemetry.visibility.averageTargetable >= loadedState.telemetry.visibility.averageVisible,
+      'Targetable population cannot be smaller than visible population.', loadedState.telemetry.visibility);
+    assert(loadedState.telemetry.segments.some((segment) => (
+      segment.enemiesSpawned > 0 && Number.isFinite(segment.effectiveSpawnCadenceMs)
+    )), 'Segment spawn telemetry is missing.', loadedState.telemetry.segments);
     assert(loadedState.telemetry.frameTimes.p95Ms <= 34, 'Load scenario exceeded the 34ms p95 frame budget.', loadedState.telemetry.frameTimes);
 
     await page.evaluate(() => {
@@ -143,7 +171,7 @@ async function testTelemetryAndLoad(browser) {
         peakMicroFodder: state.telemetry.peakMicroFodder
       };
     }
-    return { damageProbe, fxBudget, firstLoad, loadedState, secondLoad, hordeLoad };
+    return { damageProbe, cameraSpawnProbe, fxBudget, firstLoad, loadedState, secondLoad, hordeLoad };
   } finally {
     await page.close();
   }

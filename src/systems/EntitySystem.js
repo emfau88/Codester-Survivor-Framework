@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Enemy } from '../entities/Enemy.js';
 import { XPOrb } from '../entities/XPOrb.js';
+import { DEFAULT_TARGET_ACQUISITION_MARGIN } from './CombatSystem.js';
 import { getSceneViewport } from './DisplayResolutionSystem.js';
 
 const XP_ORB_SOFT_CAP = Object.freeze({ desktop: 72, mobile: 48 });
@@ -14,12 +15,14 @@ export class EntitySystem {
   }
 
   spawnEnemy(waveConfig) {
-    const point = this.findSafeEdgeSpawn(waveConfig.spawnMinDistance ?? 260);
+    const point = this.findSafeCameraSpawn(waveConfig.spawnMinDistance ?? 260, {
+      targetBuffer: waveConfig.spawnTargetBuffer
+    });
     return this.spawnEnemyAt(waveConfig, point.x, point.y);
   }
 
   findSafeEdgeSpawn(minDistance) {
-    const bounds = this.scene.arena?.bounds ?? {
+    const bounds = this.scene.arena?.combatBounds ?? {
       x: 0,
       y: 0,
       width: this.arenaWidth,
@@ -59,6 +62,118 @@ export class EntitySystem {
     return farthest ?? { ...fallback, distance: Infinity };
   }
 
+  findSafeCameraSpawn(minDistance, {
+    sideOffset = 0,
+    formationIndex = null,
+    formationCount = 1,
+    spacing = 58,
+    targetBuffer = 48,
+    preferPlayerVelocity = false,
+    approachDistance: requestedApproachDistance = null
+  } = {}) {
+    const bounds = this.scene.arena?.combatBounds ?? {
+      x: 0,
+      y: 0,
+      width: this.arenaWidth,
+      height: this.arenaHeight
+    };
+    const view = this.scene.cameras.main.worldView;
+    const player = this.scene.player?.sprite;
+    const padding = 48;
+    const targetMargin = this.scene.targetAcquisitionMargin ?? DEFAULT_TARGET_ACQUISITION_MARGIN;
+    // Use the short viewport axis first. On portrait this avoids repeatedly
+    // launching slow early-wave enemies from the far top/bottom camera edges.
+    const defaultSides = view.height > view.width ? [1, 3, 0, 2] : [0, 2, 1, 3];
+    const velocity = player?.body?.velocity;
+    const leadingSide = preferPlayerVelocity && velocity
+      ? Math.abs(velocity.x) >= Math.abs(velocity.y)
+        ? (velocity.x >= 0 ? 1 : 3)
+        : (velocity.y >= 0 ? 2 : 0)
+      : null;
+    const sides = leadingSide === null
+      ? defaultSides
+      : [leadingSide, ...defaultSides.filter((side) => side !== leadingSide)];
+
+    for (let attempt = 0; attempt < 16; attempt += 1) {
+      const side = sides[(sideOffset + attempt) % sides.length];
+      const horizontal = side === 0 || side === 2;
+      const targetMarginDistance = (horizontal ? view.height : view.width) * targetMargin;
+      const approachDistance = Number.isFinite(requestedApproachDistance)
+        ? Phaser.Math.Clamp(requestedApproachDistance, 64, 260)
+        : Phaser.Math.Clamp(
+          Math.max(minDistance * 0.15, targetMarginDistance + targetBuffer),
+          96,
+          260
+        );
+      const alongStart = horizontal ? view.x + padding : view.y + padding;
+      const alongEnd = horizontal
+        ? view.x + view.width - padding
+        : view.y + view.height - padding;
+      const formationOffset = formationIndex === null
+        ? null
+        : (formationIndex - (formationCount - 1) / 2) * spacing;
+      const along = formationOffset === null
+        ? this.scene.rng.int(alongStart, alongEnd, 'camera-spawn')
+        : Phaser.Math.Clamp((alongStart + alongEnd) / 2 + formationOffset, alongStart, alongEnd);
+      const point = horizontal
+        ? { x: along, y: side === 0 ? view.y - approachDistance : view.y + view.height + approachDistance }
+        : { x: side === 1 ? view.x + view.width + approachDistance : view.x - approachDistance, y: along };
+      const insideView = point.x >= view.x - padding
+        && point.x <= view.x + view.width + padding
+        && point.y >= view.y - padding
+        && point.y <= view.y + view.height + padding;
+      const distance = player ? Phaser.Math.Distance.Between(player.x, player.y, point.x, point.y) : Infinity;
+      if (!insideView
+        && this.scene.arena?.isInsidePlayable(point.x, point.y, padding)
+        && !this.scene.arena?.overlapsObstacle(point.x, point.y, 38)
+        && distance >= minDistance) {
+        return { ...point, distance, source: 'camera-band' };
+      }
+    }
+
+    // Narrow streaming arenas can be slimmer than the camera on portrait.
+    // Random positions on the short camera edges may then all fall outside the
+    // playable lane. Keep the fallback camera-local before considering the
+    // (potentially very distant) edge of the streamed world.
+    const perpendicularOffsets = [0, -96, 96, -192, 192];
+    for (const side of sides) {
+      const horizontal = side === 0 || side === 2;
+      const targetMarginDistance = (horizontal ? view.height : view.width) * targetMargin;
+      const approachDistance = Number.isFinite(requestedApproachDistance)
+        ? Phaser.Math.Clamp(requestedApproachDistance, 64, 260)
+        : Phaser.Math.Clamp(
+          Math.max(minDistance * 0.15, targetMarginDistance + targetBuffer),
+          96,
+          260
+        );
+      for (const offset of perpendicularOffsets) {
+        const point = horizontal
+          ? {
+            x: (player?.x ?? view.centerX) + offset,
+            y: side === 0 ? view.y - approachDistance : view.y + view.height + approachDistance
+          }
+          : {
+            x: side === 1 ? view.x + view.width + approachDistance : view.x - approachDistance,
+            y: (player?.y ?? view.centerY) + offset
+          };
+        const insideView = point.x >= view.x - padding
+          && point.x <= view.x + view.width + padding
+          && point.y >= view.y - padding
+          && point.y <= view.y + view.height + padding;
+        const distance = player
+          ? Phaser.Math.Distance.Between(player.x, player.y, point.x, point.y)
+          : Infinity;
+        if (!insideView
+          && this.scene.arena?.isInsidePlayable(point.x, point.y, padding)
+          && !this.scene.arena?.overlapsObstacle(point.x, point.y, 38)
+          && distance >= minDistance) {
+          return { ...point, distance, source: 'camera-band-fallback' };
+        }
+      }
+    }
+    return this.findSafeEdgeSpawn(minDistance);
+  }
+
   spawnEnemyAt(waveConfig, x, y) {
     const runtimeConfig = {
       ...waveConfig,
@@ -77,7 +192,8 @@ export class EntitySystem {
     this.scene.telemetry.addEnemySpawn(
       enemy,
       this.scene.time.now,
-      this.scene.waveSystem.currentWave
+      this.scene.waveSystem.currentWave,
+      this.scene.waveSystem.director.getState().segment
     );
     if (enemy.elite || enemy.champion) {
       const subtitle = enemy.boss
@@ -155,6 +271,7 @@ export class EntitySystem {
     if (value <= 0) {
       return null;
     }
+    this.scene.telemetry.addXpSpawned(value, this.scene.time.now, this.scene.waveSystem.currentWave);
     const nearby = this.scene.xpOrbs.find((orb) => (
       orb.sprite.active
       && Phaser.Math.Distance.Between(x, y, orb.sprite.x, orb.sprite.y) <= 64
@@ -192,6 +309,12 @@ export class EntitySystem {
     return released;
   }
 
+  flushBundledMicroXp(x, y) {
+    const value = this.microXpBank;
+    this.microXpBank = 0;
+    return value > 0 ? this.spawnXp(x, y, value) : null;
+  }
+
   getXpOrbSoftCap() {
     const { width, height } = getSceneViewport(this.scene);
     const touchDevice = Boolean(this.scene.sys?.game?.device?.input?.touch);
@@ -211,6 +334,7 @@ export class EntitySystem {
 
   removeOrb(orb) {
     this.scene.xpOrbs = this.scene.xpOrbs.filter((item) => item !== orb);
+    this.scene.telemetry.addXpOrbRemoved(orb.value, this.scene.time.now, this.scene.waveSystem.currentWave);
     orb.destroy();
   }
 }
