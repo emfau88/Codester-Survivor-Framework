@@ -119,6 +119,8 @@ export class PickupSystem {
     const { scene } = this;
     const kind = pickup.kind;
     if (kind === 'heal') {
+      // A health pickup remains available until it can provide real value.
+      if (scene.player.hp >= scene.player.maxHp) return false;
       const before = scene.player.hp;
       scene.player.heal(Math.max(12, Math.round(scene.player.maxHp * 0.25)));
       scene.telemetry.addHealing(scene.player.hp - before, scene.time.now, scene.waveSystem.currentWave, 'pickup:heal');

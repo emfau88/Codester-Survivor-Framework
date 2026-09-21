@@ -99,22 +99,28 @@ async function verifyArena(browser, serverUrl, arenaId) {
       .sort((a, b) => b[1] - a[1])[0][0]);
     assert(new Set(preferred).size === 3, 'Arena topologies do not create distinct weapon preferences.', preferred);
 
-    const destructible = await page.evaluate(() => {
+    const destructible = await page.evaluate(async () => {
       const api = window.__ROOSTER_TEST__;
       const initial = api.getArenaState().obstacles.find((obstacle) => obstacle.destructible && obstacle.active);
       api.damageFirstDestructible(initial.maxHp * 0.4);
+      await new Promise((resolve) => setTimeout(resolve, 80));
       const stageOne = api.getArenaState().obstacles.find((obstacle) => obstacle.destructible && obstacle.active);
       api.damageFirstDestructible(initial.maxHp * 0.3);
+      await new Promise((resolve) => setTimeout(resolve, 80));
       const stageTwo = api.getArenaState().obstacles.find((obstacle) => obstacle.destructible && obstacle.active);
       return {
         stageOne: stageOne?.damageStage,
+        stageOneAlpha: stageOne?.alpha,
         stageTwo: stageTwo?.damageStage,
+        stageTwoAlpha: stageTwo?.alpha,
         destroyed: api.damageFirstDestructible(),
         arena: api.getArenaState()
       };
     });
     assert(destructible.stageOne === 1 && destructible.stageTwo === 2,
       'Destructible cover did not expose both readable damage states.', destructible);
+    assert(destructible.stageOneAlpha === 1 && destructible.stageTwoAlpha === 1,
+      'Damaged destructible cover lost opacity instead of staying visibly solid.', destructible);
     assert(destructible.destroyed, 'Destructible cover survived lethal prop damage.', destructible);
     assert(destructible.arena.obstacles.some((obstacle) => obstacle.destructible && !obstacle.active),
       'Destroyed cover remains an active collider.', destructible);
@@ -138,6 +144,8 @@ async function verifyPickups(browser, serverUrl) {
       const api = window.__ROOSTER_TEST__;
       const beforeFirstPickup = api.advancePickupSchedule(1, 0.59);
       const firstPickup = api.advancePickupSchedule(1, 0.6);
+      const blockedAtFullHealth = api.collectPickup('heal');
+      const healStillAvailable = api.getPickupState().items.some((pickup) => pickup.kind === 'heal');
       api.setPlayerHp(40);
       const healed = api.collectPickup('heal');
       const hpAfterHeal = api.getPlayerStats().hp;
@@ -189,6 +197,8 @@ async function verifyPickups(browser, serverUrl) {
       for (let index = 0; index < 8; index += 1) api.spawnPickup('heal');
       const pickupState = api.getPickupState();
       return {
+        blockedAtFullHealth,
+        healStillAvailable,
         healed,
         hpAfterHeal,
         magnet,
@@ -209,6 +219,8 @@ async function verifyPickups(browser, serverUrl) {
         telemetry: api.getTelemetry()
       };
     });
+    assert(!result.blockedAtFullHealth && result.healStillAvailable,
+      'A full-health player consumed a heal pickup instead of leaving it available.', result);
     assert(result.healed && result.hpAfterHeal === 65, 'Heal pickup is not a bounded 25% max-HP heal.', result);
     assert(result.beforeFirstPickup.spawned.heal === 0 && result.firstPickup.spawned.heal === 1,
       'First heal did not respect its Wave 1 progress threshold.', result);

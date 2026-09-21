@@ -9,9 +9,9 @@ Dieses Dokument ist die verbindliche Checkliste für die aus dem Gameplay-Audit 
 
 | Punkt | Befund | Nächstep Aktion | Status |
 | --- | --- | --- | --- |
-| Wave-1-Dauer | letzter Lauf 28,75 s Desktop / 22,03 s Portrait | Sichtbarkeit besteht, Desktop liegt 0,75 s über dem 22–28-s-Gate; adaptive Zeitbudgetierung stabilisieren | aktiv – Regression nach XP-Pacing |
+| Wave-1-Dauer | Retest: 30,80 s Desktop / 22,05 s Portrait | Sichtbarkeit besteht, Desktop liegt 2,80 s über dem 22–28-s-Gate; adaptive Zeitbudgetierung stabilisieren | aktiv – Regression nach XP-Pacing |
 | Wave-1-Sichtbarkeit | letzter Lauf: längste Lücke 1,83 s auf Desktop und Portrait | Bewegungsführende Kamera-Spawnzone, enger Eskalations-Rand und adaptiver Nachschub | erledigt |
-| Phase-3-Erstentscheidung | 25,65–32,80 s in der 1-Seed-Matrix | 25–35-s-Gate bestanden; 25–32 s über mehrere Seeds noch separat bestätigen | aktiv – Multi-Seed-Abnahme |
+| Phase-3-Erstentscheidung | Retest: 26,02–35,25 s in der 1-Seed-Matrix | Fünf von sechs Szenarien bestehen das 25–35-s-Gate; Stormcrest Desktop liegt 0,25 s darüber. Multi-Seed-Abnahme und Feinabstimmung offen | aktiv – Multi-Seed-Abnahme |
 
 Regel: Jeder nicht bestandene Abnahmepunkt wird hier mit Befund und nächster Aktion eingetragen. Er wird nicht durch eine spätere Phase oder einen grünen Teiltest ersetzt.
 
@@ -131,6 +131,19 @@ Hinweis vor Umsetzung: „kontrollierter Rückstoß“ bedeutet ausschließlich 
 ### Messung vom 21. September 2026
 
 `test:phase-4-identity` prüft Ace-Lock und den kritischen Cadence-Schuss, die bewegungsneutrale Ace-Schussreaktion, Boombardiers Clusterziel und Stormcrests kettenfähigen Erstkontakt. `test:late-run` blieb für Desktop und Portrait bis 150 Gegner ohne Laufzeitfehler oder Pool-Drops grün.
+
+## Nachträge – 21. September 2026
+
+- [x] Heil-Pickups bleiben bei voller Gesundheit liegen und werden erst nach erlittenem Schaden verbraucht.
+- [x] Beschädigte Kisten und Heuballen bleiben vollständig deckend; die orange bzw. rote Schadensstufe bleibt als Vorwarnung erhalten.
+
+### Retest vom 21. September 2026
+
+`test:arena` bestand für Open Yard, Vertical Run und Square Coop. Der Test deckt Karten-Geometrie, Props, Pickup-Budgets sowie die neuen Heal- und Prop-Schadensregeln ab.
+
+Die serielle 1-Seed-Pacing-Matrix auf Open Yard (drei Rooster × Desktop/Portrait) ergab: Ace 26,68 s / 26,02 s, Boombardier 33,43 s / 27,82 s, Stormcrest 35,25 s / 30,18 s bis zur ersten Wahl. Damit liegen fünf von sechs Szenarien im 25–35-s-Fenster; Stormcrest Desktop bleibt offen.
+
+Der adaptive Wave-1-Retest verbesserte die längste Sichtbarkeitslücke auf Desktop von 2,95 s auf 1,38 s und im Portrait von 1,97 s auf 1,85 s. Die adaptive Desktop-Wave dauerte jedoch 30,80 s und verfehlte damit weiterhin den 22–28-s-Korridor; Portrait bestand mit 22,05 s.
 
 ## Phase 5 – Selektiver Physical-Comedy-Polish
 

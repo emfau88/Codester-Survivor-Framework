@@ -606,9 +606,9 @@ export class ArenaSystem {
   applyObstacleDamageVisual(obstacle) {
     obstacle.sprite.clearTint().setAlpha(1);
     if (obstacle.damageStage === 1) {
-      obstacle.sprite.setTint(0xffc985).setAlpha(0.94);
+      obstacle.sprite.setTint(0xffc985);
     } else if (obstacle.damageStage >= 2) {
-      obstacle.sprite.setTint(0xe66d42).setAlpha(0.86);
+      obstacle.sprite.setTint(0xe66d42);
     }
   }
 
@@ -666,6 +666,7 @@ export class ArenaSystem {
         damageStage: obstacle.damageStage ?? 0,
         hp: Number.isFinite(obstacle.hp) ? Math.max(0, obstacle.hp) : null,
         maxHp: Number.isFinite(obstacle.maxHp) ? obstacle.maxHp : null,
+        alpha: obstacle.sprite.alpha,
         active: obstacle.sprite.active
       }))
     };
