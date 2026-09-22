@@ -26,6 +26,8 @@ Dieses Protokoll erfasst ausschließlich Prüfungen am unveränderten übernomme
 | `npm run test:foundation` | fehlgeschlagen | Der deterministische Novice-Profile-Test weicht zwischen zwei gleichen Läufen bei Safe-Spawn-Koordinaten um 1–2 Pixel ab. Dieser Fehler bestand vor jeder Framework-Änderung und wird vor einem Refactor separat reproduziert und behoben. |
 | `npm run test:smoke` ohne Server | erwartete Voraussetzung | Der Test benötigt einen Dev-Server unter `http://127.0.0.1:5173/`; ohne parallel gestarteten Server entsteht erwartungsgemäß `ERR_CONNECTION_REFUSED`. |
 | Lokaler Dev-Server | beobachtet | Nach parallelen Browser-Screenshot-Sessions meldete Vite in `GameScene.update` einen Fehler beim Zugriff auf `this.debugStats.lastError`, weil `debugStats` undefiniert war. Der Smoke- und Release-Gate erfassen diesen Pfad nicht. Vor Framework-Änderungen reproduzierbar isolieren. |
+| `npm run test:rooster-depth` | repariert und bestanden | Support Chick wurde zwar erzeugt, aber im normalen Game-Loop nie mit `update(delta)` aufgerufen. Zusätzlich setzte der Test sein Ziel im Portrait außerhalb der Targeting-Grenze. Der Begleiter wird nun aktualisiert; der Test verwendet eine spielerrelative, gültige Zielposition. |
+| `npm run test:mechanics` | repariert und bestanden | Der Enemy-Ability-Test erwartete drei Slimes, ließ aber die reguläre Welle aktiv. Ein zusätzlicher Kornkrabbler konnte in den Snapshot gelangen. Der Test pausiert nun ausschließlich für sein manuelles Enemy-Szenario die Wellen. |
 
 ## Hinweise
 

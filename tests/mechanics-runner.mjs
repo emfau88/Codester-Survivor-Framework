@@ -621,6 +621,7 @@ async function testEnemyAbilities(browser) {
   const { page, errors } = await openGame(browser, 'enemy-abilities');
   try {
     await page.evaluate(() => {
+      window.__ROOSTER_TEST__.pauseWaves();
       window.__ROOSTER_TEST__.clearEnemies();
       window.__ROOSTER_TEST__.clearProjectiles();
       window.__ROOSTER_TEST__.movePlayer(700, 450);

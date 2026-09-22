@@ -98,7 +98,13 @@ async function verifySupportPath(browser, serverUrl) {
   try {
     await page.evaluate(() => {
       const api = window.__ROOSTER_TEST__;
-      api.spawnEnemyType('slime', 1100, 450, { hp: 9999, speed: 0, damage: 0, xpOverride: 0 });
+      const { player } = api.getState();
+      api.spawnEnemyType('slime', player.x + 260, player.y, {
+        hp: 9999,
+        speed: 0,
+        damage: 0,
+        xpOverride: 0
+      });
       api.applyUpgradeById('support-chick');
     });
     const rankOne = await page.evaluate(() => window.__ROOSTER_TEST__.getAbilityState().supportChick);

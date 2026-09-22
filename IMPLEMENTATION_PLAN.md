@@ -25,7 +25,7 @@ Regeln:
 - **Nächste Phase:** A — Safe Import und unveränderte Baseline
 - **Nächster konkreter Schritt:** Verbleibende Baseline-Suite inventarisieren und ausführen; danach Baseline-Tag ausschließlich auf `origin` erstellen und pushen.
 - **Blocker:** keiner
-- **Codeänderungen begonnen:** nein
+- **Codeänderungen begonnen:** ja — gezielte Baseline-Reparatur für den nicht aktualisierten Support-Chick-Companion.
 
 ## Zielzustand
 
@@ -872,4 +872,5 @@ Entscheidungen werden erst getroffen, wenn sie für die jeweils nächste Phase e
 - [x] A1-Git-Sicherheitsgrenze eingerichtet: `upstream` ist Fetch-only und `origin` zeigt ausschließlich auf das Zielrepository.
 - [x] A2-Baseline begonnen: Install, Asset-Check, Standard-/Release-Build sowie Mechanics-, Product- und Production-/Release-Gates bestanden.
 - [x] A2-Abweichungen dokumentiert: Foundation-Test ist im unveränderten Stand nicht deterministisch; Smoke-Test benötigt einen separat gestarteten Dev-Server; parallele Browser-Sessions können `GameScene.update` vor der `debugStats`-Initialisierung auslösen.
+- [x] A2-Baseline-Reparatur: Support-Chick-Update-Loop sowie zwei Testisolationen nach fehlgeschlagenem `test:rooster-depth`/`test:mechanics` verifiziert (`test:rooster-depth`, `test:mechanics`, `test:evolution` grün).
 - [x] Ziel-`main` mit vollständiger Originalhistorie und drei Dokumentationscommits gepusht (`origin/main` bei `7b0f2bc`, 118 Commits insgesamt).

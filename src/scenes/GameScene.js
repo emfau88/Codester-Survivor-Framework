@@ -243,6 +243,7 @@ export class GameScene extends Phaser.Scene {
       this.enemies.forEach((enemy) => enemy.update(this.player));
       this.projectileLifecycle.update(delta);
       this.activeAbilities.update(simulationTime);
+      this.supportChickens.forEach((chicken) => chicken.update(delta));
       this.pickups.update(simulationTime);
       this.checkProjectileHits();
       this.projectileLifecycle.cleanup();
