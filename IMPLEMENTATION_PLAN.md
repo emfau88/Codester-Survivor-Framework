@@ -23,8 +23,8 @@ Regeln:
 ## Aktueller Fokus
 
 - **Nächste Phase:** A — Safe Import und unveränderte Baseline
-- **Nächster konkreter Schritt:** Nach manueller GitHub-Anmeldung den serverseitigen Vollimport in das Zielrepository abschließen; anschließend Baseline-Commit und Tag nur zu `origin` pushen.
-- **Blocker:** GitHubs Importoberfläche verlangt eine interaktive Anmeldung; diese muss der Repository-Inhaber selbst vornehmen.
+- **Nächster konkreter Schritt:** Verbleibende Baseline-Suite inventarisieren und ausführen; danach Baseline-Tag ausschließlich auf `origin` erstellen und pushen.
+- **Blocker:** keiner
 - **Codeänderungen begonnen:** nein
 
 ## Zielzustand
@@ -107,7 +107,7 @@ Geschätzter Aufwand: **8–16 Stunden**
 - [x] Ziel-`main` vom geprüften Original-Commit erstellen.
 - [x] Sicherstellen, dass `origin` ausschließlich auf `codester-survivor-framework` zeigt.
 - [x] Sicherstellen, dass kein Command im Arbeitsablauf zum Original pushen kann.
-- [ ] Audit- und Plan-Datei auf die importierte Historie übernehmen.
+- [x] Audit- und Plan-Datei auf die importierte Historie übernehmen.
 
 ## A2 — Unveränderte technische Baseline
 
@@ -135,9 +135,9 @@ Geschätzter Aufwand: **8–16 Stunden**
 
 Acceptance Criteria:
 
-- [ ] Originalrepository ist unverändert und technisch nicht als Push-Ziel verwendbar.
-- [ ] Zielrepository enthält alle 115 Baseline-Commits.
-- [ ] Der Ziel-`main` basiert nachweislich auf `5e9fc…`.
+- [x] Originalrepository ist unverändert und technisch nicht als Push-Ziel verwendbar.
+- [x] Zielrepository enthält alle 115 Baseline-Commits.
+- [x] Der Ziel-`main` basiert nachweislich auf `5e9fc…`.
 - [ ] Der vollständige bestehende Build läuft im Zielrepository.
 - [ ] Baseline-Testset ist grün oder Abweichungen sind exakt dokumentiert.
 - [ ] Demo sieht aus und spielt sich wie vor dem Import.
@@ -872,3 +872,4 @@ Entscheidungen werden erst getroffen, wenn sie für die jeweils nächste Phase e
 - [x] A1-Git-Sicherheitsgrenze eingerichtet: `upstream` ist Fetch-only und `origin` zeigt ausschließlich auf das Zielrepository.
 - [x] A2-Baseline begonnen: Install, Asset-Check, Standard-/Release-Build sowie Mechanics-, Product- und Production-/Release-Gates bestanden.
 - [x] A2-Abweichungen dokumentiert: Foundation-Test ist im unveränderten Stand nicht deterministisch; Smoke-Test benötigt einen separat gestarteten Dev-Server; parallele Browser-Sessions können `GameScene.update` vor der `debugStats`-Initialisierung auslösen.
+- [x] Ziel-`main` mit vollständiger Originalhistorie und drei Dokumentationscommits gepusht (`origin/main` bei `7b0f2bc`, 118 Commits insgesamt).
