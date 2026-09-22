@@ -25,6 +25,7 @@ Dieses Protokoll erfasst ausschließlich Prüfungen am unveränderten übernomme
 | --- | --- | --- |
 | `npm run test:foundation` | fehlgeschlagen | Der deterministische Novice-Profile-Test weicht zwischen zwei gleichen Läufen bei Safe-Spawn-Koordinaten um 1–2 Pixel ab. Dieser Fehler bestand vor jeder Framework-Änderung und wird vor einem Refactor separat reproduziert und behoben. |
 | `npm run test:smoke` ohne Server | erwartete Voraussetzung | Der Test benötigt einen Dev-Server unter `http://127.0.0.1:5173/`; ohne parallel gestarteten Server entsteht erwartungsgemäß `ERR_CONNECTION_REFUSED`. |
+| Lokaler Dev-Server | beobachtet | Nach parallelen Browser-Screenshot-Sessions meldete Vite in `GameScene.update` einen Fehler beim Zugriff auf `this.debugStats.lastError`, weil `debugStats` undefiniert war. Der Smoke- und Release-Gate erfassen diesen Pfad nicht. Vor Framework-Änderungen reproduzierbar isolieren. |
 
 ## Hinweise
 

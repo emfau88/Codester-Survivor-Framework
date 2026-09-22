@@ -871,4 +871,4 @@ Entscheidungen werden erst getroffen, wenn sie für die jeweils nächste Phase e
 - [x] Phase A als nächsten Fokus festgelegt.
 - [x] A1-Git-Sicherheitsgrenze eingerichtet: `upstream` ist Fetch-only und `origin` zeigt ausschließlich auf das Zielrepository.
 - [x] A2-Baseline begonnen: Install, Asset-Check, Standard-/Release-Build sowie Mechanics-, Product- und Production-/Release-Gates bestanden.
-- [x] A2-Abweichungen dokumentiert: Foundation-Test ist im unveränderten Stand nicht deterministisch; Smoke-Test benötigt einen separat gestarteten Dev-Server.
+- [x] A2-Abweichungen dokumentiert: Foundation-Test ist im unveränderten Stand nicht deterministisch; Smoke-Test benötigt einen separat gestarteten Dev-Server; parallele Browser-Sessions können `GameScene.update` vor der `debugStats`-Initialisierung auslösen.
