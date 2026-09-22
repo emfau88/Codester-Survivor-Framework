@@ -23,8 +23,8 @@ Regeln:
 ## Aktueller Fokus
 
 - **Nächste Phase:** A — Safe Import und unveränderte Baseline
-- **Nächster konkreter Schritt:** Audit und Umsetzungsplan auf der importierten Baseline committen und ausschließlich zum Zielremote pushen
-- **Blocker:** keiner
+- **Nächster konkreter Schritt:** Nach manueller GitHub-Anmeldung den serverseitigen Vollimport in das Zielrepository abschließen; anschließend Baseline-Commit und Tag nur zu `origin` pushen.
+- **Blocker:** GitHubs Importoberfläche verlangt eine interaktive Anmeldung; diese muss der Repository-Inhaber selbst vornehmen.
 - **Codeänderungen begonnen:** nein
 
 ## Zielzustand
@@ -111,18 +111,18 @@ Geschätzter Aufwand: **8–16 Stunden**
 
 ## A2 — Unveränderte technische Baseline
 
-- [ ] `npm ci` auf frischem Checkout ausführen.
-- [ ] `npm run assets:check` ausführen.
-- [ ] `npm run build` ausführen.
-- [ ] `npm run build:release` ausführen.
-- [ ] `npm run test:production` ausführen.
-- [ ] `npm run test:smoke` ausführen.
-- [ ] `npm run test:mechanics` ausführen.
-- [ ] `npm run test:product` ausführen.
-- [ ] `npm run test:release` ausführen.
+- [x] `npm ci` auf frischem Checkout ausführen.
+- [x] `npm run assets:check` ausführen.
+- [x] `npm run build` ausführen.
+- [x] `npm run build:release` ausführen.
+- [x] `npm run test:production` ausführen.
+- [x] `npm run test:smoke` ausführen.
+- [x] `npm run test:mechanics` ausführen.
+- [x] `npm run test:product` ausführen.
+- [x] `npm run test:release` ausführen.
 - [ ] Vorhandene Full-Suite-Kommandos inventarisieren und Laufzeiten protokollieren.
-- [ ] Baseline-Screenshots für Desktop, Portrait und Landscape erzeugen.
-- [ ] Testresultate und bekannte Warnungen in `docs/framework/BASELINE.md` dokumentieren.
+- [x] Baseline-Screenshots für Desktop, Portrait und Landscape erzeugen.
+- [x] Testresultate und bekannte Warnungen in `docs/framework/BASELINE.md` dokumentieren.
 
 ## A3 — Baseline einfrieren
 
@@ -857,6 +857,7 @@ Entscheidungen werden erst getroffen, wenn sie für die jeweils nächste Phase e
 | 2026-09-22 | Asset-/Lizenzphase vor Architekturrefactor | Es soll kein Content aufwendig abstrahiert werden, der später nicht ausgeliefert werden darf. |
 | 2026-09-22 | Rooster Rage bleibt vorläufig vollständiges Example Game | Der Produktionswert und die integrierten Systeme sollen erhalten bleiben. |
 | 2026-09-22 | Arbeitsname „Phaser Survivor Framework — Complete Bullet Heaven Game Foundation“ | Gute Auffindbarkeit plus realistische Beschreibung des Umfangs. |
+| 2026-09-22 | Serverseitiger GitHub-Importer statt lokalem Push | Der blob-gefilterte lokale Clone enthält nicht alle historischen Asset-Blobs; der Import bewahrt Historie vollständig ohne Änderung am Original. |
 
 ---
 
@@ -868,3 +869,6 @@ Entscheidungen werden erst getroffen, wenn sie für die jeweils nächste Phase e
 - [x] Phasen, Abhängigkeiten, Acceptance Criteria und Testmatrix definiert.
 - [x] Audit als Phase 0 markiert.
 - [x] Phase A als nächsten Fokus festgelegt.
+- [x] A1-Git-Sicherheitsgrenze eingerichtet: `upstream` ist Fetch-only und `origin` zeigt ausschließlich auf das Zielrepository.
+- [x] A2-Baseline begonnen: Install, Asset-Check, Standard-/Release-Build sowie Mechanics-, Product- und Production-/Release-Gates bestanden.
+- [x] A2-Abweichungen dokumentiert: Foundation-Test ist im unveränderten Stand nicht deterministisch; Smoke-Test benötigt einen separat gestarteten Dev-Server.
