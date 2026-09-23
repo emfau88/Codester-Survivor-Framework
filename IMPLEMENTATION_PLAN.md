@@ -1,7 +1,7 @@
 # Umsetzungsplan — Phaser Survivor Framework
 
-Letzte Aktualisierung: 22. September 2026  
-Status: **Plan erstellt — Phase A ist der nächste Arbeitsschritt**  
+Letzte Aktualisierung: 24. September 2026
+Status: **Phase A aktiv — Baseline-Suite wird finalisiert**
 Technische Grundlage: [`AUDIT_PHASE_1.md`](./AUDIT_PHASE_1.md)
 
 ## Verwendung dieses Dokuments
@@ -23,9 +23,9 @@ Regeln:
 ## Aktueller Fokus
 
 - **Nächste Phase:** A — Safe Import und unveränderte Baseline
-- **Nächster konkreter Schritt:** Verbleibende Baseline-Suite inventarisieren und ausführen; danach Baseline-Tag ausschließlich auf `origin` erstellen und pushen.
+- **Nächster konkreter Schritt:** Verbleibende Baseline-Runner (Boss, Boss-Matrix, Character-Lab, Pages) ausführen und Laufzeiten protokollieren; danach Baseline-Tag ausschließlich auf `origin` erstellen und pushen.
 - **Blocker:** keiner
-- **Codeänderungen begonnen:** ja — gezielte Baseline-Reparatur für den nicht aktualisierten Support-Chick-Companion.
+- **Codeänderungen begonnen:** ja — gezielte Baseline-Reparaturen für Support-Chick-Updates, Testisolation und arenaunabhängiges Early-Game-Pacing.
 
 ## Zielzustand
 

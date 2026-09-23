@@ -6,6 +6,7 @@ const STRANDED_CLEANUP_GRACE_MS = 10000;
 const OPENING_WAVE_CLEANUP_GRACE_MS = 0;
 const STRANDED_CLEANUP_MAX_ENEMIES = 3;
 const STRANDED_CLEANUP_ATTEMPTS = 12;
+const OPENING_WAVE_STALL_MS = 3000;
 
 export class WaveSystem {
   constructor(scene) {
@@ -186,7 +187,14 @@ export class WaveSystem {
       && enemy.sprite.y >= view.y
       && enemy.sprite.y <= view.y + view.height
     ));
-    if (!eligible || (openingWave ? hasVisibleEnemy : this.scene.getTargetableEnemies().length > 0)) {
+    // A visible enemy can still be unreachable when it is caught against arena
+    // geometry. During the opening, three such leftovers block the Wave-2 XP
+    // bridge and can delay the first upgrade indefinitely. Once combat has
+    // produced no hit for a short, explicit window, recover just those strays.
+    const openingCombatStalled = openingWave
+      && time - (this.scene.debugStats?.lastHitAt ?? 0) >= OPENING_WAVE_STALL_MS;
+    if (!eligible || (!openingCombatStalled
+      && (openingWave ? hasVisibleEnemy : this.scene.getTargetableEnemies().length > 0))) {
       this.resetCleanupWatch();
       return 0;
     }

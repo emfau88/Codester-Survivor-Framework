@@ -700,11 +700,20 @@ export class GameScene extends Phaser.Scene {
       name: config.name,
       bossWave: config.bossWave ?? false
     });
-    if (wave === 2) {
-      this.time.delayedCall(3500, () => {
-        if (this.gameEnded || this.waveSystem.currentWave < 2) return;
-        this.entities.spawnXp(this.player.sprite.x, this.player.sprite.y, 1);
-        this.telemetry.record('openingXpBridgeSpawned', this.time.now, { wave: 2, xp: 1 });
+    if (wave === 1) {
+      // Wave one intentionally ends one XP short of the first level. Arena
+      // geometry can leave a few harmless stragglers alive, so tying that
+      // final point to Wave 2 made the first decision route-dependent. At the
+      // 30-second learning-beat, bridge only the XP still required to level.
+      this.time.delayedCall(30000, () => {
+        if (this.gameEnded || this.player.level > 1 || !this.player.sprite.active) return;
+        const requiredXp = Math.max(0, this.player.xpToNext - this.player.xp);
+        if (requiredXp <= 0) return;
+        this.entities.spawnXp(this.player.sprite.x, this.player.sprite.y, requiredXp);
+        this.telemetry.record('openingXpBridgeSpawned', this.time.now, {
+          wave: this.waveSystem.currentWave,
+          xp: requiredXp
+        });
       });
     }
   }

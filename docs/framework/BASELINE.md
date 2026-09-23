@@ -1,6 +1,6 @@
 # Unveränderte Rooster-Rage-Baseline
 
-Stand: 22. September 2026  
+Stand: 24. September 2026
 Quellcommit: `5e9fc5879ff322d73c5b8267aa3b0e5cd14a5419`
 
 Dieses Protokoll erfasst ausschließlich Prüfungen am unveränderten übernommenen Spiel. Es ist kein Nachweis für die spätere Framework-Produktisierung.
@@ -18,6 +18,9 @@ Dieses Protokoll erfasst ausschließlich Prüfungen am unveränderten übernomme
 | `npm run test:product` | bestanden | Privacy-safe Analytics Gate bestanden. |
 | `npm run test:production` | bestanden | Production Gate bestanden; Test-API nicht exponiert. |
 | `npm run test:release` | bestanden | Release Gate bestanden; 131 Dateien, 17,49 MiB, WebGL-Boot mit normalem und blockiertem Storage geprüft. |
+| `npm run test:menus` | bestanden | Responsive Menüprüfung über Desktop-, Kurzformat- und Hochformat-Viewports. |
+| `npm run test:soak` | bestanden | Realer Zehn-Minuten-Lauf: p95 16,8 ms, 0 verlorene Objekte, 340 erzeugte Poolobjekte bei 18.600 Wiederverwendungen. |
+| `npm run test:early-pacing` | bestanden | 90 serielle Samples über 3 Arenen, 3 Charaktere, Desktop und Portrait; erste Upgrade-Entscheidung innerhalb der zulässigen 23–37 Sekunden. |
 
 ## Bekannte Baseline-Abweichungen
 
@@ -28,9 +31,10 @@ Dieses Protokoll erfasst ausschließlich Prüfungen am unveränderten übernomme
 | Lokaler Dev-Server | beobachtet | Nach parallelen Browser-Screenshot-Sessions meldete Vite in `GameScene.update` einen Fehler beim Zugriff auf `this.debugStats.lastError`, weil `debugStats` undefiniert war. Der Smoke- und Release-Gate erfassen diesen Pfad nicht. Vor Framework-Änderungen reproduzierbar isolieren. |
 | `npm run test:rooster-depth` | repariert und bestanden | Support Chick wurde zwar erzeugt, aber im normalen Game-Loop nie mit `update(delta)` aufgerufen. Zusätzlich setzte der Test sein Ziel im Portrait außerhalb der Targeting-Grenze. Der Begleiter wird nun aktualisiert; der Test verwendet eine spielerrelative, gültige Zielposition. |
 | `npm run test:mechanics` | repariert und bestanden | Der Enemy-Ability-Test erwartete drei Slimes, ließ aber die reguläre Welle aktiv. Ein zusätzlicher Kornkrabbler konnte in den Snapshot gelangen. Der Test pausiert nun ausschließlich für sein manuelles Enemy-Szenario die Wellen. |
+| `npm run test:early-pacing` | repariert und bestanden | In Square Coop konnte die letzte XP der ersten Entscheidung an unerreichbare Restgegner und damit an den Wave-2-Übergang gebunden bleiben. Nach 30 Sekunden ergänzt eine einmalige, bedarfsgenaue XP-Brücke nur die fehlende XP; zusätzlich werden bis zu drei sichtbare, aber drei Sekunden lang ungetroffene Restgegner zurück in Kampfreichweite gesetzt. Der Test wartet beim Restart bis zu 10 Sekunden auf den stabilen Run-State, statt Startjitter als Gameplay-Fehler zu werten. |
 
 ## Hinweise
 
 - Vite meldet beim Standard- und Release-Build einen Chunk über 500 kB. Das ist eine Optimierungswarnung, kein Build-Fehler.
 - Visuell geprüft und als Referenz abgelegt: [Desktop](./baseline-desktop.png), [Portrait](./baseline-portrait.png), [Landscape](./baseline-landscape.png). Die Henhouse-Startansicht lädt vollständig und zeigt keinen Fehleroverlay.
-- Der vollständige Testkatalog und Laufzeiten folgen, sobald die über den Browser laufenden Tests unter der lokalen Dev-Server-Session validiert wurden.
+- Weitere vorhandene Browser-Runner (Boss, Boss-Matrix, Character-Lab und Pages) werden vor dem Baseline-Tag separat ausgeführt und mit Laufzeit ergänzt.

@@ -40,6 +40,7 @@ const FIRST_PICK_WINDOW_MS = [25000, 35000];
 // fraction of a second. Keep 25-35 s as the production target, but do not turn
 // sub-second measurement noise into a balance rewrite.
 const FIRST_PICK_TOLERANCE_MS = 2000;
+const RESTART_READY_TIMEOUT_MS = 10000;
 
 function assert(condition, message, details) {
   if (!condition) throw new Error(`${message}\n${JSON.stringify(details ?? {}, null, 2)}`);
@@ -102,7 +103,11 @@ async function runScenario(browser, serverUrl, scenario) {
       api.selectMetaChallenge('standard');
       api.restart();
     });
-    await page.waitForFunction(() => window.__ROOSTER_TEST__?.getChallengeState().id === 'standard');
+    await page.waitForFunction(
+      () => window.__ROOSTER_TEST__?.getChallengeState().id === 'standard',
+      null,
+      { timeout: RESTART_READY_TIMEOUT_MS }
+    );
     await page.evaluate((rooster) => {
       const api = window.__ROOSTER_TEST__;
       api.selectRooster(rooster);
